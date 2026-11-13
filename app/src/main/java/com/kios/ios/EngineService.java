@@ -60,7 +60,7 @@ public class EngineService extends Service {
     private void runBench(int stubs, int smp, int seconds) {
         File logFile = new File(getExternalFilesDir(null), LOG);
         PowerManager.WakeLock wl = getSystemService(PowerManager.class)
-                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, ’"kios:engine");
+                .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "kios:engine");
         wl.acquire(TimeUnit.SECONDS.toMillis(seconds + 30));
         try (PrintWriter log = new PrintWriter(new FileWriter(logFile), true)) {
             log.println("uid " + android.os.Process.myUid() + " sdk " + android.os.Build.VERSION.SDK_INT

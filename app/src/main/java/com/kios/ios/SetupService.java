@@ -252,7 +252,7 @@ public class SetupService extends Service {
         state.paused = false;
         watchNetwork();
         if (wakeLock == null) {
-            wakeLock = getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, ’"kios:setup");
+            wakeLock = getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "kios:setup");
             wakeLock.acquire();
         }
         IpswFetch[] current = new IpswFetch[1];

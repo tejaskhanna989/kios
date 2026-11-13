@@ -147,7 +147,7 @@ public class GuestService extends Service {
         watchPowerSaving();
         note("power: saving " + (PowerCheck.saverOn(this) ? "on" : "off") + ", " + PowerCheck.describe());
         if (wakeLock == null) {
-            wakeLock = getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, ’"kios:guest");
+            wakeLock = getSystemService(PowerManager.class).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "kios:guest");
             wakeLock.acquire();
         }
         // fork from the app's large process: not on the main thread
