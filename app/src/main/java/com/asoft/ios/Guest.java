@@ -1224,9 +1224,6 @@ final class Guest {
 
     /** For the ends that come without one (stop() on the UI thread). */
     private static volatile Context appContext;
-     * Null when saved, else why not (QEMU is stopped either way). Not synchronized: it takes
-     * tens of seconds, and the screen asks running() every frame.
-     */
     /** An automatic save may be running (AutoSave): a close or a turn off waits for it, at most 2 minutes. */
     private static void waitForSave() {
         for (int i = 0; i < 1200 && saving.get(); i++) {
