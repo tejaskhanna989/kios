@@ -1589,7 +1589,7 @@ final class Guest {
             throw new IOException("cannot start QEMU");
         }
         state = resumed ? "resuming" : "booting";
-        track(IOS12, false, resumed ? "the save " + loadTag : "a boot", logAt, smp, 2048, "", Emu.qemuPath(c));
+        track(12, false, resumed ? "the save " + loadTag : "a boot", logAt, smp, 2048, "", Emu.qemuPath(c));
         connectQmp(c, pid);
     }
 
