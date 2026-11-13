@@ -128,11 +128,11 @@ final class Helper {
      * shared build, which holds the shell ramdisk (rd-shell.hfs, 512 MB with ~350 MB written) twice (in
      * /root/ios26/rd and its copy in /work), two 43 MB kernels and the sysroot twice, on top of the 101 MB
      * initramfs and apfs-fuse, rsync and python: ~1.2 GB that cannot be paged out (the VM has no swap). So the
-     * job-run jobs (iOS 26, watchOS, the screen check) get at least 2 GiB. iOS 16's jobs keep nothing big in
+     * job-run jobs (iOS 26, watchOS, the screen check) get at least 2 GiB. iOS 12's jobs keep nothing big in
      * RAM (build-root works on its scratch disk, payload's /work holds the kernel and payload.bin, ~200 MB):
      * 1.5 GiB. Read from the scripts (2026-11-12), not measured below 4 GiB.
      */
-    static final int FLOOR_WORK_IN_RAM = 2048, FLOOR_IOS16 = 1536, FLOOR_IOS12 = 1024;
+    static final int FLOOR_WORK_IN_RAM = 2048, FLOOR_IOS12 = 1536, FLOOR_IOS12 = 1024;
     /** The sizes, largest first: a retry after Android's memory killer steps down one (smaller()). */
     private static final int[] SIZES = {4096, 3072, 2048, 1536};
 
@@ -145,7 +145,7 @@ final class Helper {
      *     10.5 GB and up (12 GB phones and more)   4096 MiB   as measured on the S25 Ultra, every job
      *      7   GB and up (8 GB)                     3072 MiB
      *      5   GB and up (6 GB)                     2048 MiB
-     *      below (4 GB)                             1536 MiB  (iOS 16's jobs only; the floor lifts the others)
+     *      below (4 GB)                             1536 MiB  (iOS 12's jobs only; the floor lifts the others)
      * never above 4096. Debug builds: files/helper-ram-mib (a number) overrides it, to try the small sizes on a big phone.
      */
     static int ramMiB(Context c, int floorMiB) {

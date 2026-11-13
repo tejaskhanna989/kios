@@ -59,7 +59,7 @@ final class AppExit {
 
     // -- the marker
 
-    /** @what (GUEST, SETUP, IMPORT) begins: @text says it for a record ("the iOS 16 setup was running"). */
+    /** @what (GUEST, SETUP, IMPORT) begins: @text says it for a record ("the iOS 12 setup was running"). */
     static synchronized void begin(Context c, String what, String text) {
         now.setProperty(what, text);
         now.setProperty(what + ".logAt", String.valueOf(appLogLength(c)));
@@ -142,7 +142,7 @@ final class AppExit {
         return p;
     }
 
-    /** What @p says was going on, the setup first: "the iOS 16 setup was running (Build the iOS disk)"; null: nothing. */
+    /** What @p says was going on, the setup first: "the iOS 12 setup was running (Build the iOS disk)"; null: nothing. */
     private static String activity(Properties p) {
         for (String w : WHATS) {
             String t = p.getProperty(w);
@@ -447,9 +447,9 @@ final class AppExit {
         long t = System.currentTimeMillis();
         String during = "unpacking the iOS images (7137 MB)";
         LinkedHashMap<String, String> h = new LinkedHashMap<>();
-        h.put("os", String.valueOf(Guest.IOS16));
-        h.put("guest", "iOS 16");
-        h.put("what", "iOS 16 setup stopped at Build the iOS disk");
+        h.put("os", String.valueOf(Guest.IOS12));
+        h.put("guest", "iOS 12");
+        h.put("what", "iOS 12 setup stopped at Build the iOS disk");
         h.put("cause", "building the iOS disk failed: " + CrashText.helperFailure(-1, 9, null, during, ""));
         h.put("crash", "yes");
         h.put("test", "yes");
@@ -474,12 +474,12 @@ final class AppExit {
         a.put("os", "0");
         a.put("guest", "The app");
         a.put("what", CrashText.appExitSummary(CrashText.EXIT_LOW_MEMORY, 0, null,
-                "the iOS 16 setup was running (Build the iOS disk)"));
+                "the iOS 12 setup was running (Build the iOS disk)"));
         a.put("cause", CrashText.exitWords(CrashText.EXIT_LOW_MEMORY, 0, null));
         a.put("crash", "yes");
         a.put("test", "yes");
         a.put("reason", CrashText.exitName(CrashText.EXIT_LOW_MEMORY) + ", status 0, importance 125");
-        a.put("while", "the iOS 16 setup was running (Build the iOS disk)");
+        a.put("while", "the iOS 12 setup was running (Build the iOS disk)");
         a.put("app", CrashReport.appVersion(c));
         a.put("phone", CrashReport.phone());
         a.put("memory now", CrashReport.memInfo());

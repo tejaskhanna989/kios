@@ -246,7 +246,7 @@ final class Qmp {
         t.start();
     }
 
-    /** iOS 16 maps F1 = Home, F2 = side button, F3/F4 = volume down/up (bsd/dev/sweet_vinput.c). */
+    /** iOS 12 maps F1 = Home, F2 = side button, F3/F4 = volume down/up (bsd/dev/sweet_vinput.c). */
     void key(String qcode) {
         send("{\"execute\":\"send-key\",\"arguments\":{\"keys\":[{\"type\":\"qcode\",\"data\":\"" + qcode + "\"}]}}");
     }

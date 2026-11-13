@@ -19,7 +19,7 @@ import java.util.Locale;
  * a buffer over host memory and sparse binds from host memory); a pass is remembered for this build of
  * the app and its Turnip. When Turnip fails, or the phone has no Adreno (Turnip drives Adreno GPUs only),
  * the phone's own Vulkan driver is probed too, for the log: what it lacks is what support for it
- * (Mali, say) would need. iOS 16 does not use the GPU and is not gated.
+ * (Mali, say) would need. iOS 12 does not use the GPU and is not gated.
  * <p>
  * A Turnip that lacks only sparse binds from host memory (Adreno 750, 2026-11: the binds are accepted but read
  * back zeros) passes in a compatibility mode ({@link #FALLBACK_COVERS}, {@link #noSparse}): iOS 26 and watchOS
@@ -123,15 +123,15 @@ final class GpuCheck {
      * (iOS 26 4 GiB by default on a 12 GB phone, the watch 3 GiB) plus QEMU, Turnip and reims (~1.5 GB on the
      * S25) plus Android itself; estimates, not measured on such phones (2026-11-09).
      */
-    static final long RAM_IOS16 = 7_000_000_000L;
+    static final long RAM_IOS12 = 7_000_000_000L;
 
     /** Set up's warning for this phone's RAM, or "". */
     static String ramWarning(Context c) {
         long r = ram(c);
-        if (r >= RAM_IOS16) {
+        if (r >= RAM_IOS12) {
             return "";
         }
-        return String.format(Locale.ROOT, "This phone has %.1f GB of RAM: iOS 16 needs about 7 GB. "
+        return String.format(Locale.ROOT, "This phone has %.1f GB of RAM: iOS 12 needs about 7 GB. "
                 + "It may run slowly or Android may close it.", r / 1e9);
     }
 

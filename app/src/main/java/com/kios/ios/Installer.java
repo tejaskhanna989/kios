@@ -68,7 +68,7 @@ final class Installer {
                 region, android.text.format.DateFormat.is24HourFormat(c)), cpus), dir);
     }
 
-    /** Something an import would delete: an installed iOS 16, or its iPhone's own disk and saves. */
+    /** Something an import would delete: an installed iOS 12, or its iPhone's own disk and saves. */
     static boolean hasData(Context c) {
         return installed(c) || Guest.userDisk(c).exists();
     }
@@ -83,7 +83,7 @@ final class Installer {
     }
 
     /**
-     * What a bundle holds: "16" (iOS 16: PARTS), "26" (iOS 26: Guest.PHONE_PARTS26, the layout the phone's own
+     * What a bundle holds: "16" (iOS 12: PARTS), "26" (iOS 26: Guest.PHONE_PARTS26, the layout the phone's own
      * setup leaves) or "watchos" (WatchProfile's files with iOS 26's sptm, txm and ramdisk), by its manifest,
      * the archive's first file (Send-ToPhone.ps1 -OS). Returns it.
      */
@@ -136,7 +136,7 @@ final class Installer {
         }
     }
 
-    /** The names a bundle may hold: iOS 16's; anything else in it is skipped. */
+    /** The names a bundle may hold: iOS 12's; anything else in it is skipped. */
     private static final java.util.Set<String> NAMES = new java.util.HashSet<>();
 
     static {
@@ -414,8 +414,8 @@ final class Installer {
 
     /**
      * What removing @os deletes: everything of its own, nothing another system or the app needs.
-     *   iOS 16   files/ios16 (kernel, payload, root disk), a half-made ios16.part, and the phone setup's work folder
-     *            (files/setup/ios16: its downloads, helper jobs and step marks)
+     *   iOS 12   files/ios12 (kernel, payload, root disk), a half-made ios12.part, and the phone setup's work folder
+     *            (files/setup/ios12: its downloads, helper jobs and step marks)
      *   iOS 26   files/ios26 (kernel, firmware, trees, trust cache, ramdisk and disk; where the phone made it, hard
      *            links into the setup's work folder), the screen check's helper folder (Screen26.jobDir), and its part
      *            of the work folder (PhoneSetup26.own: downloads, images, disks, helper jobs, logs, step marks)

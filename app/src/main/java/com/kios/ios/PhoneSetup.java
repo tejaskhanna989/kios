@@ -76,7 +76,7 @@ final class PhoneSetup {
 
     /**
      * Bytes the rest of the run needs free at its height, beyond what it has on disk already (the screen
-     * and the checks): iOS 12 is smaller than iOS 16.
+     * and the checks): iOS 12 is smaller than iOS 12.
      */
     static long needBytes(Context c) {
         File w = work(c);
@@ -253,7 +253,7 @@ final class PhoneSetup {
 
     /**
      * Saves iOS into its quick-boot slot and ends it (Save and close's own path; it waits for QEMU to
-     * end), then lets go of the guest RAM memfd: the app keeps it after iOS 16 ends, and after a first
+     * end), then lets go of the guest RAM memfd: the app keeps it after iOS 12 ends, and after a first
      * start it holds gigabytes of pages nobody needs until the user starts iOS.
      */
     private static String end(Context c) {

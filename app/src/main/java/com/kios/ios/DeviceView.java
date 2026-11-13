@@ -14,7 +14,7 @@ import android.view.View;
 /**
  * One of the home screen's devices, drawn the way the app's logo draws its iPhone: a metal frame, a black
  * front, and on its screen what the system last showed (ScreenActivity keeps a small picture, Guest.thumbFile).
- * iOS 26 is an iPhone with the island, iOS 16 the iPhone with a Home button its 750x1334 screen belongs to, and
+ * iOS 26 is an iPhone with the island, iOS 12 the iPhone with a Home button its 750x1334 screen belongs to, and
  * watchOS a watch with its crown and band. Without a picture yet the screen is a home screen in the logo's
  * colours (the watch: its rings); a system that is not installed is an empty, faint device with a plus.
  */

@@ -38,7 +38,7 @@ final class SetupScreen {
         NAMES.put("Firmware/all_flash/DeviceTree.d22ap.im4p", "iPhone X device tree");
     }
 
-    /** iOS 16's steps and what the screen calls them (SetupRecord names the failed one with them too). */
+    /** iOS 12's steps and what the screen calls them (SetupRecord names the failed one with them too). */
     static final String[][] STEPS = {
             {"ipsw", "Download from Apple"},
             {"payload", "Kernel with the iPhone's device tree"},
@@ -123,7 +123,7 @@ final class SetupScreen {
         TextView title = text(root, "Install on this phone from Apple", 18, Color.WHITE);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         title.setPadding(0, 8, 0, 8);
-        text(root, "iOS 16.7.16 for the iPhone X: about 5.8 GB from Apple's own servers, then the phone builds the iOS disk "
+        text(root, "iOS 12.7.16 for the iPhone X: about 5.8 GB from Apple's own servers, then the phone builds the iOS disk "
                 + "itself, as the PC installer does, and starts iOS once so that your first start is quick. About 1.5 hours "
                 + "on a Galaxy S25 Ultra. Keep the phone on its charger; you can use it meanwhile.", 15, GRAY)
                 .setPadding(0, 0, 0, 16);
@@ -138,7 +138,7 @@ final class SetupScreen {
         files.setOrientation(LinearLayout.VERTICAL);
         dl.addView(files);
         try {
-            org.json.JSONArray m = PhoneSetup.manifest(a).getJSONObject("os").getJSONObject("ios16")
+            org.json.JSONArray m = PhoneSetup.manifest(a).getJSONObject("os").getJSONObject("ios12")
                     .getJSONObject("sources").getJSONObject("ipsw").getJSONArray("members");
             for (int i = 0; i < m.length(); i++) {
                 org.json.JSONObject e = m.getJSONObject(i);
@@ -273,7 +273,7 @@ final class SetupScreen {
         free.setTextColor(freeBytes < need ? ORANGE : DIM);
 
         boolean mine = !"a26".equals(s.target);
-        // iOS 16's own error line has its buttons
+        // iOS 12's own error line has its buttons
         errorButtons.setVisibility(mine && s.error != null && s.record != null && !s.running ? View.VISIBLE : View.GONE);
         String note = Helper.memoryNote;
         memory.setText(note == null ? "" : note);
@@ -338,10 +338,10 @@ final class SetupScreen {
             }
         }
         boolean all = PhoneSetup.done(a, "firststart");
-        error.setText(s.error != null ? s.error : all ? "iOS 16 is set up. Start it from the home screen: it comes up in about 10 s." : "");
+        error.setText(s.error != null ? s.error : all ? "iOS 12 is set up. Start it from the home screen: it comes up in about 10 s." : "");
         error.setTextColor(s.error == null ? GREEN : RED);
         boolean started = PhoneSetup.work(a).isDirectory();
-        startPause.setText(s.running ? (s.paused ? "Resume" : "Pause") : all ? "iOS 16 is set up" : started ? "Resume install" : "Install iOS 16");
+        startPause.setText(s.running ? (s.paused ? "Resume" : "Pause") : all ? "iOS 12 is set up" : started ? "Resume install" : "Install iOS 12");
         startPause.setEnabled(!all);
         // only the download pauses (a helper VM step or iOS's first start would have to start over)
         startPause.setVisibility(s.running && !s.paused && !"ipsw".equals(s.step) ? View.GONE : View.VISIBLE);

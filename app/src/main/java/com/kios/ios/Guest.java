@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * The iOS 16 machine, as qemu-sweet.py builds it, and its one QEMU process. The guest's files
+ * The iOS 12 machine, as qemu-sweet.py builds it, and its one QEMU process. The guest's files
  * (ram.bin and stub.bin from qemu-sweet.py, the root disk) are in a directory the app can read.
  */
 final class Guest {
@@ -73,7 +73,7 @@ final class Guest {
 
     /**
      * One of the iPhone's buttons (home, power, volup, voldown), @down or up: held until the up, so
-     * iOS repeats a held volume button. iOS 16 has them as keys F1-F4 (bsd/dev/sweet_vinput.c).
+     * iOS repeats a held volume button. iOS 12 has them as keys F1-F4 (bsd/dev/sweet_vinput.c).
      * An up comes at least MIN_HOLD_MS after its down: iOS reads a button only once it has been down.
      */
     static void button(String b, boolean down) {
@@ -208,7 +208,7 @@ final class Guest {
     }
 
     /** The adb test folder (debug builds): ram.bin, stub.bin and disk.qcow2 made on the PC. */
-    static final File TEST_DIR = new File("/data/local/tmp/asoft/ios16-app");
+    static final File TEST_DIR = new File("/data/local/tmp/asoft/ios12-app");
 
     /** Where payload.bin (or ram.bin and stub.bin) and disk.qcow2 are: what Set up brought in, else the test folder. */
     static File guestDir(Context c) {
@@ -290,8 +290,8 @@ final class Guest {
     /**
      * After Installer.remove: what the "guest" preferences keep of @forOs goes, each of its disks' marks (a stale quick
      * save, dirty, checked) and its screen and memory choices, so that a new install starts from the defaults. When it
-     * was the one chosen, the choice goes to a system still on the phone (iOS 16; with none, as on a fresh app), its
-     * start error with it. "stale-from-log-done" stays: the app's log still holds the old iOS 16's lines, which must not
+     * was the one chosen, the choice goes to a system still on the phone (iOS 12; with none, as on a fresh app), its
+     * start error with it. "stale-from-log-done" stays: the app's log still holds the old iOS 12's lines, which must not
      * mark a new one's quick save stale.
      */
     static void forgetSystem(Context c, int forOs) {
@@ -318,13 +318,13 @@ final class Guest {
         return new File(c.getFilesDir(), diskName(c, forOs) + ".thumb.jpg");
     }
 
-    /** What sits next to the user disk for one save: "ios16-user.<tag>.leds" and the like. */
+    /** What sits next to the user disk for one save: "ios12-user.<tag>.leds" and the like. */
     private static String userPrefix(Context c) {
         return diskName(c, os(c)) + ".";
     }
 
     /**
-     * The guest's RAM (MiB): iOS 12 runs with 2 GiB of RAM; iOS 16 runs with 7 GiB.
+     * The guest's RAM (MiB): iOS 12 runs with 2 GiB of RAM; iOS 12 runs with 7 GiB.
      */
     static int ramMiB(Context c) {
         return runningOs == IOS12 ? 2048 : 7168;
@@ -341,7 +341,7 @@ final class Guest {
         return new File(c.getFilesDir(), userPrefix(c) + tag + ".ram");
     }
 
-    /** What save @tag opens with: vCPUs and RAM; iOS 16's RAM is fixed at 7 GiB, iOS 12's at 2 GiB. */
+    /** What save @tag opens with: vCPUs and RAM; iOS 12's RAM is fixed at 7 GiB, iOS 12's at 2 GiB. */
     static String hardware(Context c, String tag) {
         int cpus = savedCpus(c, tag);
         return cpus + " vCPU" + (runningOs == IOS12 ? ", 2 GiB RAM" : ", 7 GiB RAM");
@@ -580,7 +580,7 @@ final class Guest {
      * loads by itself, or the disk would go back to that save; only goBack loads it, when the user asks.
      */
     private static String staleKey(Context c) {
-        return staleKey(diskName(c, IOS16));
+        return staleKey(diskName(c, IOS12));
     }
 
     private static String staleKey(String disk) {
@@ -597,7 +597,7 @@ final class Guest {
 
     /**
      * 0.1.1 left no mark when its Turn off could not delete the quick save: its own log shows it, a
-     * "power off" after the last "save". Read once, for iOS 16 (0.1.1 had no other).
+     * "power off" after the last "save". Read once, for iOS 12 (0.1.1 had no other).
      */
     private static void staleFromOldLog(Context c) {
         android.content.SharedPreferences p = c.getSharedPreferences("guest", Context.MODE_PRIVATE);
@@ -646,7 +646,7 @@ final class Guest {
     }
 
     static boolean otherHardware(Context c, String tag) {
-        return false;   // iOS 16: RAM is fixed, so no hardware change
+        return false;   // iOS 12: RAM is fixed, so no hardware change
     }
 
     /**
@@ -666,7 +666,7 @@ final class Guest {
     // -- the user disk's health
 
     private static String dirtyKey(Context c) {
-        return dirtyKey(diskName(c, IOS16));
+        return dirtyKey(diskName(c, IOS12));
     }
 
     private static String dirtyKey(String disk) {
@@ -690,7 +690,7 @@ final class Guest {
         File u = userDisk(c);
         android.content.SharedPreferences p = c.getSharedPreferences("guest", Context.MODE_PRIVATE);
         boolean dirty = p.getBoolean(dirtyKey(c), false);
-        if (!u.exists() || !dirty && p.getBoolean(CHECKED + diskName(c, IOS16), false)) {
+        if (!u.exists() || !dirty && p.getBoolean(CHECKED + diskName(c, IOS12), false)) {
             return;
         }
         long t0 = System.currentTimeMillis();
@@ -712,14 +712,14 @@ final class Guest {
                 + r[0] + ", corruptions " + corrupt + ", leaks " + leaks + ", check errors " + errors + ", "
                 + (System.currentTimeMillis() - t0) + " ms");
         if ("2".equals(r[0]) || corrupt > 0) {
-            throw new IOException("iOS 16's disk has " + corrupt + " errors in its tables (qemu-img check);"
+            throw new IOException("iOS 12's disk has " + corrupt + " errors in its tables (qemu-img check);"
                     + " it was left as it is. The app's log has the details.");
         }
         if ("3".equals(r[0]) || leaks > 0) {
             String[] fix = Emu.qemuImg(c, "check", "-r", "leaks", u.getPath());
             AppLog.note(c, "disk check: freed the leaked clusters, exit " + fix[0]);
         }
-        p.edit().putBoolean(CHECKED + diskName(c, IOS16), true).putBoolean(dirtyKey(c), false).commit();
+        p.edit().putBoolean(CHECKED + diskName(c, IOS12), true).putBoolean(dirtyKey(c), false).commit();
     }
 
     /** iOS runs, writes and saves into the user disk: refuse to start below this much free room. */
@@ -731,7 +731,7 @@ final class Guest {
         AppLog.note(c, String.format(java.util.Locale.ROOT, "room: %.1f GB free, user disk %.1f GB, quick save %.1f GB,"
                 + " needs %.1f GB", free / 1e9, userDisk(c).length() / 1e9, quick / 1e9, need / 1e9));
         if (free < need) {
-            throw new IOException(String.format(java.util.Locale.ROOT, "Only %.1f GB free on this phone: iOS 16 needs"
+            throw new IOException(String.format(java.util.Locale.ROOT, "Only %.1f GB free on this phone: iOS 12 needs"
                     + " %.1f GB to run and to save. Free space on the phone, or delete saves (side bar > Saves).",
                     free / 1e9, need / 1e9));
         }
@@ -1289,7 +1289,7 @@ final class Guest {
      * memory falls during the save instead of every page it had swapped out coming back at once (lmkd ended
      * the app, and the save, that way). QEMU then refuses to run that machine again; it only quits or loads.
      * An engine that refuses the capability saves as before, and so does one that accepts it without the
-     * release (iOS 16's libqemu.so, iOS 26 engines from before 2026-11-10).
+     * release (iOS 12's libqemu.so, iOS 26 engines from before 2026-11-10).
      */
     private static void releaseRamWhileSaving(Context c, Qmp q) {
         String r = q.call("{\"execute\":\"migrate-set-capabilities\",\"arguments\":{\"capabilities\":"
@@ -1432,7 +1432,7 @@ final class Guest {
         }
         pid = -1;
         state = "stopped";
-        // iOS 16's RAM is this app's memfd: its pages go back to the phone now (Render.releaseGuestRam)
+        // iOS 12's RAM is this app's memfd: its pages go back to the phone now (Render.releaseGuestRam)
         Render.releaseGuestRam();
     }
 

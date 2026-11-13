@@ -97,7 +97,7 @@ final class CrashReport {
         int cpus;
         /** 0: the setup boot's own device tree decides */
         int ramMiB;
-        /** "786x1704"; "" for iOS 16 */
+        /** "786x1704"; "" for iOS 12 */
         String screen;
         /** the QEMU binary's path */
         String engine;
@@ -588,7 +588,7 @@ final class CrashReport {
             return v == null ? "" : v;
         }
 
-        /** One line for lists and notices: "iOS 26 crashed", "iOS 16 setup stopped at Build the iOS disk". */
+        /** One line for lists and notices: "iOS 26 crashed", "iOS 12 setup stopped at Build the iOS disk". */
         String summary() {
             String s = GUEST.equals(kind) ? guest + (crash ? " crashed" : " stopped by itself") : what;
             return test() ? "[test] " + s : s;
@@ -682,7 +682,7 @@ final class CrashReport {
 
     /** The pending notices of every system in one string, for a screen to see that one came or went. */
     static String pendingKey(Context c) {
-        return pendingId(c, Guest.IOS16);
+        return pendingId(c, Guest.IOS12);
     }
 
     /** @os's newest record while its notice stands (until @os is started again), else null. */
@@ -711,7 +711,7 @@ final class CrashReport {
 
     // -- the report
 
-    /** The issue's title: "iOS 26: renderCommandEncoderWithDescriptor:: BGR10_XR (552)", "iOS 16 setup: …". */
+    /** The issue's title: "iOS 26: renderCommandEncoderWithDescriptor:: BGR10_XR (552)", "iOS 12 setup: …". */
     static String reportTitle(Record r) {
         String t;
         if (GUEST.equals(r.kind)) {

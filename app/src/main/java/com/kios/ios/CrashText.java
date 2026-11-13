@@ -304,8 +304,8 @@ final class CrashText {
     }
 
     /**
-     * One line for the screens: "The app was closed by Android while the iOS 16 setup was running (Build the iOS
-     * disk): low memory". @activity: what was going on ("the iOS 16 setup was running …"), null when nothing.
+     * One line for the screens: "The app was closed by Android while the iOS 12 setup was running (Build the iOS
+     * disk): low memory". @activity: what was going on ("the iOS 12 setup was running …"), null when nothing.
      */
     static String appExitSummary(int reason, int status, String description, String activity) {
         String during = blank(activity) ? "" : " while " + activity.trim();

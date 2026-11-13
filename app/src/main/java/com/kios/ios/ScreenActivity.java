@@ -234,7 +234,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
         guestBack();
     }
 
-    /** Wakes iOS's display: the side button on iOS 16 (power would sleep it again). */
+    /** Wakes iOS's display: the side button on iOS 12 (power would sleep it again). */
     private void wake() {
         Guest.button("power");
     }
@@ -959,7 +959,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
                     wakeAfterLoad = false;
                 } else if (displayOff && up >= wakeAt) {
                     wake();
-                    wakePowerMs = Guest.lastPowerMs;    // iOS 16's wake is the side button: ours, not the user's
+                    wakePowerMs = Guest.lastPowerMs;    // iOS 12's wake is the side button: ours, not the user's
                     wakeTries++;
                     wakeAt = up + 6_000;
                 }

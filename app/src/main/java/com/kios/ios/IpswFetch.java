@@ -33,7 +33,7 @@ import java.util.zip.Inflater;
  * 32 MB chunks over 8 HTTP Range connections, each chunk written at its own offset, the finished ones
  * listed in a ".done" file next to the output (as ipsw-get.py's OUT.done), so an app kill, a reboot
  * or a lost network costs only the chunks in flight. CRC-32 is checked at the end. A deflated member
- * up to 256 MB comes in one request and is inflated on the way; a bigger one (iOS 16's SystemOS,
+ * up to 256 MB comes in one request and is inflated on the way; a bigger one (iOS 12's SystemOS,
  * 1.1 GB in the zip) is fetched in chunks as it is and inflated from that copy afterwards.
  *
  * Two kinds of output:

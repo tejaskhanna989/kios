@@ -21,7 +21,7 @@ import java.util.Locale;
 final class SetupRecord {
     private SetupRecord() {}
 
-    /** iOS 16's step names, as SetupScreen shows them. */
+    /** iOS 12's step names, as SetupScreen shows them. */
     private static String label16(String step) {
         for (String[] s : SetupScreen.STEPS) {
             if (s[0].equals(step)) {
@@ -31,13 +31,13 @@ final class SetupRecord {
         return step.isEmpty() ? "its start" : step;
     }
 
-    /** "iOS 16": whose step @step is. */
+    /** "iOS 12": whose step @step is. */
     private static String system26(String step) {
-        return "iOS 16";
+        return "iOS 12";
     }
 
     private static int os26(String step) {
-        return Guest.IOS16;
+        return Guest.IOS12;
     }
 
     /** What the screen calls step @step ("ipsw", "disk", ...). */
@@ -74,10 +74,10 @@ final class SetupRecord {
     private static String writeNow(Context c, boolean a26, String step, int pct, String text, Throwable e, String error,
             long logAt, long stepSince, long runSince) {
         long now = System.currentTimeMillis();
-        String system = a26 ? system26(step) : "iOS 16";
+        String system = a26 ? system26(step) : "iOS 12";
         String label = label(a26, step);
         LinkedHashMap<String, String> h = new LinkedHashMap<>();
-        h.put("os", String.valueOf(a26 ? os26(step) : Guest.IOS16));
+        h.put("os", String.valueOf(a26 ? os26(step) : Guest.IOS12));
         h.put("guest", system);
         h.put("what", system + " setup stopped at " + label);
         h.put("cause", error == null ? String.valueOf(e) : error);
