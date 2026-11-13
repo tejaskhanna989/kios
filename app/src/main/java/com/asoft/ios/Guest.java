@@ -435,12 +435,22 @@ final class Guest {
         return out;
     }
 
+    /** A save's vCPU count; 4 for the saves made before 0.1.2, which all had four. */
+    static int savedCpus(Context c, String tag) {
+        try {
+            int n = Integer.parseInt(new String(java.nio.file.Files.readAllBytes(
+                    new File(c.getFilesDir(), diskName(c, runningOs) + "." + tag + ".cpus").toPath())).trim());
+            return n >= 1 && n <= 8 ? n : 4;
+        } catch (IOException | NumberFormatException e) {
+            return 4;
+        }
+    }
+
     /**
      * Before a start that wants the quick-boot state: the newest quick slot's tag (an older one, left by a
      * save whose last second did not come, goes now), or QUICK when there is none (then the start boots).
      */
-    private static String resolveQuick(Context c, String loadTag) {
-        if (!QUICK.equals(loadTag) || !userDisk(c).exists()) {
+    private static String resolveQuick(Context c, String loadTag) {        if (!QUICK.equals(loadTag) || !userDisk(c).exists()) {
             return loadTag;
         }
         List<Snap> q = quickSlots(c);
@@ -633,7 +643,7 @@ final class Guest {
         return quick != null && isQuick(quick.tag) && quickStale(c);
     }
 
-    private static boolean otherHardware(Context c, String tag) {
+    static boolean otherHardware(Context c, String tag) {
         return false;   // iOS 16: RAM is fixed, so no hardware change
     }
 
@@ -1046,6 +1056,9 @@ final class Guest {
         }
         return why;
     }
+
+    /** QEMU's Scroll Lock LED bit: ASoftware's XNU lights it while iOS has the display off (xnu 0102). */
+    static final int SCROLL_LOCK_LED = 1;
 
     static synchronized boolean running() {
         boolean a = Render.alive(pid);

@@ -1016,9 +1016,6 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
                 }
                 restart.setVisibility(View.VISIBLE);
                 report.setVisibility(cr != null ? View.VISIBLE : View.GONE);
-                if (Guest.endedInCompatMode()) {
-                    compatSince = now;
-                }
                 // one dialog, not two: the crash's report says the compatibility mode's sentence too. Its record
                 // comes a moment after the end (CrashReport.captureAsync); without one in a few seconds, the notice alone
                 if (compatSince > 0 && (cr != null || now - compatSince > COMPAT_WAIT_MS)) {
