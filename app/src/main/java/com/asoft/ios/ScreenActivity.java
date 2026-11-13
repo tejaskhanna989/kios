@@ -140,7 +140,6 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
             }
         });
         root.addView(cover, new FrameLayout.LayoutParams(-1, -1));
-        }
         status = new TextView(this);
         status.setTextColor(Color.WHITE);
         status.setTextSize(13);
