@@ -123,17 +123,16 @@ final class GpuCheck {
      * (iOS 26 4 GiB by default on a 12 GB phone, the watch 3 GiB) plus QEMU, Turnip and reims (~1.5 GB on the
      * S25) plus Android itself; estimates, not measured on such phones (2026-11-09).
      */
-    static final long RAM_IOS26 = 7_000_000_000L, RAM_WATCH = 5_000_000_000L;
+    static final long RAM_IOS16 = 7_000_000_000L;
 
     /** Set up's warning for this phone's RAM, or "". */
     static String ramWarning(Context c) {
         long r = ram(c);
-        if (r >= RAM_IOS26) {
+        if (r >= RAM_IOS16) {
             return "";
         }
-        return String.format(Locale.ROOT, "This phone has %.1f GB of RAM: Android may close iOS 26%s while it runs. "
-                + "A smaller memory for them (their menu on the home screen; iOS 26: 3 GB, watchOS: 2 GB) leaves Android more.",
-                r / 1e9, r < RAM_WATCH ? " and watchOS" : "");
+        return String.format(Locale.ROOT, "This phone has %.1f GB of RAM: iOS 16 needs about 7 GB. "
+                + "It may run slowly or Android may close it.", r / 1e9);
     }
 
     static long ram(Context c) {
@@ -483,8 +482,8 @@ final class GpuCheck {
         if (r.ran) {
             judge(c, r, sysLines, adreno() && !turnipOff(c));
             rep.append("\n== verdict\n");
-            rep.append(String.format(Locale.ROOT, "ram: %.2f GB (a warning below %.1f for iOS 26, %.1f for watchOS; guest memory iOS 26 %d MiB, watchOS %d MiB)%n",
-                    r.ram / 1e9, RAM_IOS26 / 1e9, RAM_WATCH / 1e9, Guest.ramMiB(c, Guest.IOS26), Guest.ramMiB(c, Guest.WATCH)));
+            rep.append(String.format(Locale.ROOT, "ram: %.2f GB (guest memory %d MiB)%n",
+                    r.ram / 1e9, Guest.ramMiB(c)));
             rep.append("result: ").append(r.nosparse ? "supported in the compatibility mode (no " + SPARSE_HOST
                     + ": reims' deferred views off, REIMS_VGPU_DEFERRED_VIEWS=0)"
                     : r.pass ? "supported" : r.never ? "will not run on this phone (with its current driver)" : "not supported yet")

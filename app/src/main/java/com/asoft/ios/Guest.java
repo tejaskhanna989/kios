@@ -23,14 +23,13 @@ final class Guest {
 
     static final long RAM_SIZE = 7L << 30;
 
-    // -- which iOS: 16 (-M virt, ramfb, no GPU) or 26 (-M vresearch, the phone's GPU through reims)
+    // -- which iOS: 16 (-M virt, ramfb, no GPU)
 
-    /** WATCH: watchOS 27.2 on iOS 26's machine (WatchProfile), with its own disk, screen and buttons. */
-    static final int IOS16 = 16, IOS26 = 26, WATCH = 27;
+    static final int IOS16 = 16;
 
     /** What the screens call @os. */
     static String osName(int os) {
-        return os == WATCH ? "watchOS" : "iOS " + os;
+        return "iOS " + os;
     }
     /** The iOS of the QEMU that runs, or ran last. */
     private static volatile int runningOs = IOS16;
@@ -49,39 +48,23 @@ final class Guest {
         return running() ? runningOs : selected(c);
     }
 
-    /** A -M vresearch guest runs (iOS 26 or watchOS): its frames, buttons and end are iOS 26's. */
-    static boolean ios26Running() {
-        return runningOs == IOS26 || runningOs == WATCH;
-    }
-
-    static boolean watchRunning() {
-        return runningOs == WATCH;
-    }
-
-    /** iOS 26's screen: the console surface reims reads each frame back into (ASOFT_FRAME_FD). */
-    static final int FB26_W = 1179, FB26_H = 2556;
-    /** The running iOS 26's screen: FB26_W x FB26_H (@3x), or what ios26.txt's fb= set (786x1704 @2x). */
-    static int fb26W = FB26_W, fb26H = FB26_H;
-
     static int fbW() {
-        return ios26Running() ? fb26W : FB_W;
+        return FB_W;
     }
 
     static int fbH() {
-        return ios26Running() ? fb26H : FB_H;
+        return FB_H;
     }
 
     /** Maps the running guest's screen for Render.frame(); null when done, else why not. */
     static String openScreen(int forPid) {
-        return ios26Running() ? Render.openFramebuffer(forPid, -1, fb26W, fb26H, fb26W * 4)
-                : Render.openFramebuffer(forPid, FB_BASE - RAM_BASE, FB_W, FB_H, FB_STRIDE);
+        return Render.openFramebuffer(forPid, FB_BASE - RAM_BASE, FB_W, FB_H, FB_STRIDE);
     }
 
     /**
      * One of the iPhone's buttons (home, power, volup, voldown), @down or up: held until the up, so
-     * iOS repeats a held volume button. iOS 16 has them as keys F1-F4 (bsd/dev/sweet_vinput.c);
-     * iOS 26 as QEMU's usb-consumer device's down/up (IOS26-INPUT §2.6). An up comes at least
-     * MIN_HOLD_MS after its down: iOS reads a button only once it has been down.
+     * iOS repeats a held volume button. iOS 16 has them as keys F1-F4 (bsd/dev/sweet_vinput.c).
+     * An up comes at least MIN_HOLD_MS after its down: iOS reads a button only once it has been down.
      */
     static void button(String b, boolean down) {
         input();
@@ -121,11 +104,7 @@ final class Guest {
     private static final Map<String, Long> held = new java.util.concurrent.ConcurrentHashMap<>();
 
     private static void buttonEdge(Qmp q, String b, boolean down) {
-        if (ios26Running()) {
-            q.consumer(down ? "down" : "up", b);
-        } else {
-            q.keyEvent(b.equals("home") ? "f1" : b.equals("power") ? "f2" : b.equals("voldown") ? "f3" : "f4", down);
-        }
+        q.keyEvent(b.equals("home") ? "f1" : b.equals("power") ? "f2" : b.equals("voldown") ? "f3" : "f4", down);
     }
 
     /** Lets go of every button held (the screen lost the keys: their ups will not come). */
@@ -155,115 +134,9 @@ final class Guest {
         if (q == null) {
             return;
         }
-        if (ios26Running()) {
-            q.press(b);
-        } else {
-            q.key(b.equals("home") ? "f1" : b.equals("power") ? "f2" : b.equals("voldown") ? "f3" : "f4");
-        }
+        q.key(b.equals("home") ? "f1" : b.equals("power") ? "f2" : b.equals("voldown") ? "f3" : "f4");
     }
 
-    /** watchOS: turns the Digital Crown by @units (WatchControls). */
-    static void crown(int units) {
-        input();
-        Qmp q = qmp;
-        if (q != null && runningOs == WATCH) {
-            q.crown(units);
-        }
-    }
-
-    /**
-     * iOS 26's files: brought into the app (files/ios26), else the folder adb pushed them to for
-     * the Termux runs (ANDROID-S25.md §8.8), read where they are: the disk chain is 26 GB.
-     */
-    static final File TEST26_DIR = new File("/data/local/tmp/asoft/ios26");
-    static final String DTREE26 = "dtree-root26v-smp4-19m2";    // timebase 19.2 MHz: x-host-counter
-    static final String[] PARTS26 = {"bootkc", "sptm", "txm", DTREE26, "root26m.tc", "rd-shell.hfs", "root26r.qcow2"};
-    /**
-     * iOS 26's Always On Display (APK-PLAN §6.23), optional files beside PARTS26: a layer on root26r with
-     * libMobileGestalt's AlwaysOnDisplayFlipbook answer made no (the hardware flipbook asserts on the
-     * paravirtual display), its trust cache (root26m.tc + that subcache's CDHash) and the device tree with
-     * /arm-io/disp0 always-on-time. A user disk on AOD26_BASE boots with these two; one on root26r without.
-     */
-    static final String AOD26_BASE = "root26s-aod.qcow2", AOD26_TC = "root26s-aod.tc", DTREE26_AOD = DTREE26 + "-aod";
-
-    /** The AOD files are all in @g: new user disks go on AOD26_BASE. */
-    static boolean aodFiles(File g) {
-        return new File(g, AOD26_BASE).canRead() && new File(g, AOD26_TC).canRead() && new File(g, DTREE26_AOD).canRead();
-    }
-
-    /** The backing file named in a qcow2's header (its own text, maybe relative), null if none or unreadable. */
-    static String backingOf(File qcow2) {
-        try (java.io.RandomAccessFile f = new java.io.RandomAccessFile(qcow2, "r")) {
-            if (f.readInt() != 0x514649fb) {     // "QFI\xfb"
-                return null;
-            }
-            f.seek(8);
-            long off = f.readLong();
-            int len = f.readInt();
-            if (off <= 0 || len <= 0 || len > 1023) {
-                return null;
-            }
-            byte[] b = new byte[len];
-            f.seek(off);
-            f.readFully(b);
-            return new String(b, java.nio.charset.StandardCharsets.UTF_8);
-        } catch (IOException e) {
-            return null;
-        }
-    }
-
-    /** The iOS 26 running now has its Always On Display (its disk is on AOD26_BASE): the screen watches for it. */
-    static volatile boolean aodRunning;
-
-    /** The user disk is on the AOD base: it boots with the AOD device tree and trust cache. */
-    static boolean aodDisk(File userDisk) {
-        String b = backingOf(userDisk);
-        return b != null && new File(b).getName().equals(AOD26_BASE);
-    }
-
-    /**
-     * What the phone's own setup (PhoneSetup26) leaves in files/ios26: one packed disk with the Always On Display
-     * patch, its trust cache and both trees, no root26r: every user disk goes on AOD26_BASE.
-     */
-    static final String[] PHONE_PARTS26 = {"bootkc", "sptm", "txm", DTREE26, DTREE26_AOD, AOD26_TC, "rd-shell.hfs", AOD26_BASE};
-
-    static File dir26(Context c) {
-        File d = new File(c.getFilesDir(), "ios26");
-        return new File(d, "root26r.qcow2").isFile() || new File(d, AOD26_BASE).isFile() ? d : TEST26_DIR;
-    }
-
-    /** iOS 26 as the phone's own setup made it (files/ios26/install.json). */
-    static boolean phoneMade26(File d) {
-        return new File(d, "install.json").isFile() && !new File(d, "root26r.qcow2").isFile();
-    }
-
-    /** The first of iOS 26's files this app cannot read, null when all are there. */
-    static String missing26(Context c) {
-        File d = dir26(c);
-        for (String p : phoneMade26(d) ? PHONE_PARTS26 : PARTS26) {
-            if (!new File(d, p).canRead()) {
-                return p;
-            }
-        }
-        return null;
-    }
-
-    static boolean available26(Context c) {
-        return missing26(c) == null;
-    }
-
-    /** Turnip (Mesa's Adreno Vulkan driver, with host-pointer import over KGSL) for the Vulkan loader. */
-    static File writeVulkanIcd(Context c, File links) throws IOException {
-        File d = new File(c.getFilesDir(), "vulkan");
-        d.mkdirs();
-        File json = new File(d, "turnip_icd.json");
-        try (PrintWriter w = new PrintWriter(new FileWriter(json))) {
-            w.println("{\"file_format_version\": \"1.0.1\", \"ICD\": {\"library_path\": \""
-                    + new File(links, "libvulkan_freedreno.so").getPath()
-                    + "\", \"api_version\": \"1.4.354\", \"library_arch\": \"64\"}}");
-        }
-        return json;
-    }
     /**
      * The quick-boot state's name inside the user disk (qcow2 internal snapshot). It lives in one of
      * two slots, QUICK and QUICK_B: a new quick save goes into the other slot and the old one is
@@ -374,45 +247,21 @@ final class Guest {
      * read-only root disk; deleting it erases the iPhone.
      */
     static File userDisk(Context c) {
-        return userDisk(c, os(c));
+        return new File(c.getFilesDir(), "ios16-user.qcow2");
     }
 
-    static File userDisk(Context c, int forOs) {
-        return new File(c.getFilesDir(), diskName(c, forOs) + ".qcow2");
-    }
-
-    /**
-     * "ios16-user", "ios26-user", or "ios26-2x-user" for iOS 26 with the 2x screen: iOS keeps its
-     * screen's scale in its MobileGestalt cache from the first boot on, so each scale has its own disk
-     * (its own iPhone, settings, apps and saves).
-     */
+    /** "ios16-user": iOS keeps its screen's scale in its MobileGestalt cache from the first boot on. */
     private static String diskName(Context c, int forOs) {
-        String[] n = diskNames(forOs);
-        return forOs == IOS26 && scale26(c) == 2 ? n[1] : n[0];
+        return "ios" + forOs + "-user";
     }
 
-    /** Every name diskName gives @forOs: iOS 26 has one per screen scale (3x, then 2x). */
-    private static String[] diskNames(int forOs) {
-        return forOs == WATCH ? new String[] {"watch-user"} : forOs == IOS26 ? new String[] {"ios26-user", "ios26-2x-user"}
-                : new String[] {"ios" + forOs + "-user"};
-    }
-
-    /**
-     * Every file of @forOs's own among the app's files (its install folder is Installer's): what one of its disk names
-     * starts (diskNames: the user disks, one an install kept as .old, the home screen's picture, each save's notes,
-     * which erase deletes for one disk), and the device trees start26 made from its own (tree(): its RAM size, the 2x
-     * screen; iOS 26's AOD tree's too). For Installer.remove.
+    /** Every file of @forOs's own among the app's files (its install folder is Installer's): what one of its disk names
+     * starts (diskName: the user disk, one an install kept as .old, the home screen's picture, each save's notes,
+     * which erase deletes for one disk). For Installer.remove.
      */
     static List<File> ownFiles(Context c, int forOs) {
         List<String> starts = new ArrayList<>();
-        for (String d : diskNames(forOs)) {
-            starts.add(d + ".");
-        }
-        if (forOs == IOS26) {
-            starts.add(DTREE26);
-        } else if (forOs == WATCH) {
-            starts.add(WatchProfile.DTREE);
-        }
+        starts.add(diskName(c, forOs) + ".");
         List<File> out = new ArrayList<>();
         File[] f = c.getFilesDir().listFiles();
         for (File x : f == null ? new File[0] : f) {
@@ -428,31 +277,26 @@ final class Guest {
 
     /**
      * After Installer.remove: what the "guest" preferences keep of @forOs goes, each of its disks' marks (a stale quick
-     * save, dirty, checked, a Go back's RAM, Screen26's cache and Auto-Lock marks) and its screen and memory choices, so
-     * that a new install starts from the defaults. When it was the one chosen, the choice goes to a system still on the
-     * phone (iOS 26, the watch, iOS 16; with none, as on a fresh app), its start error with it. "stale-from-log-done"
-     * stays: the app's log still holds the old iOS 16's lines, which must not mark a new one's quick save stale.
+     * save, dirty, checked) and its screen and memory choices, so that a new install starts from the defaults. When it
+     * was the one chosen, the choice goes to a system still on the phone (iOS 16; with none, as on a fresh app), its
+     * start error with it. "stale-from-log-done" stays: the app's log still holds the old iOS 16's lines, which must not
+     * mark a new one's quick save stale.
      */
     static void forgetSystem(Context c, int forOs) {
         android.content.SharedPreferences.Editor e = c.getSharedPreferences("guest", Context.MODE_PRIVATE).edit();
-        for (String d : diskNames(forOs)) {
-            e.remove(staleKey(d)).remove(dirtyKey(d)).remove(CHECKED + d).remove(keptRamKey(d));
-            Screen26.forget(c, d);
-        }
-        if (forOs == IOS26) {
-            e.remove(SCALE26_KEY).remove(ramKey(IOS26));
-        } else if (forOs == WATCH) {
-            e.remove(ramKey(WATCH));
+        for (String d : new String[] {diskName(c, forOs)}) {
+            e.remove(staleKey(d)).remove(dirtyKey(d)).remove(CHECKED + d);
         }
         if (selected(c) == forOs) {
-            int next = available26(c) ? IOS26 : WatchProfile.available(c) ? WATCH : IOS16;
-            if (next == IOS16 && !available(c)) {
+            if (!available(c)) {
                 e.remove("os");
             } else {
-                e.putInt("os", next);
+                e.putInt("os", IOS16);
             }
             startError = null;
         }
+        e.commit();
+    }
         e.commit();
     }
 
@@ -470,62 +314,13 @@ final class Guest {
     }
 
     /**
-     * iOS 26's screen scale, 3 (1179x2556, an iPhone's own) or 2 (786x1704: the same 393x852 points with
-     * 2.25 times fewer pixels to draw). Chosen in iOS 26's menu on the home screen. Unchosen it is 2, except where iOS 26 already ran at 3
-     * before 2 became the default: that disk holds its apps and saves.
+     * The guest's RAM (MiB): iOS 16 runs with 7 GiB of RAM.
      */
-    static int scale26(Context c) {
-        android.content.SharedPreferences p = c.getSharedPreferences("guest", Context.MODE_PRIVATE);
-        if (p.contains(SCALE26_KEY)) {
-            return p.getInt(SCALE26_KEY, 2) == 2 ? 2 : 3;
-        }
-        return new File(c.getFilesDir(), "ios26-user.qcow2").exists() ? 3 : 2;
+    static int ramMiB(Context c) {
+        return 7168;
     }
 
-    private static final String SCALE26_KEY = "ios26-scale";
-
-    static void setScale26(Context c, int scale) {
-        c.getSharedPreferences("guest", Context.MODE_PRIVATE).edit().putInt(SCALE26_KEY, scale == 2 ? 2 : 3).apply();
-    }
-
-    /**
-     * The guest's RAM in MiB, per OS, chosen in its menu on the home screen (iOS 26 3, 4 or 6 GiB; the watch 2 or 3 GiB). Unchosen:
-     * 4 / 3 GiB (the trees' own) on a phone with ~12 GB, 3 / 2 GiB on a smaller one (2 GiB slowed the watch's
-     * cold Settings from 5.5 to 27 s but left ~1.3 GB more to Android, WATCHOS.md). A save always loads with
-     * the RAM it was made with (savedRam), so a new size takes effect at the next full start.
-     */
-    static final int[] RAM_CHOICES_26 = {3072, 4096, 6144}, RAM_CHOICES_WATCH = {2048, 3072};
-    /** Above this Android has so little left that it may close the guest: MainActivity.chooseRam warns. */
-    static final int RAM_TIGHT = 4096;
-    // 6 GB needs qemu-sptm asoft-android 6c733cf or later: from 5 GB of RAM vresearch's framebuffer goes past the end
-    // of RAM. A save made below 5 GB keeps the old address, 0x1c0000000, so it still loads.
-
-    static int ramDefault(Context c, int forOs) {
-        boolean small = GpuCheck.ram(c) < 10_000_000_000L;
-        return forOs == WATCH ? (small ? 2048 : 3072) : (small ? 3072 : 4096);
-    }
-
-    private static String ramKey(int forOs) {
-        return forOs == WATCH ? "watch-ram" : "ios26-ram";
-    }
-
-    static int ramMiB(Context c, int forOs) {
-        int mib = c.getSharedPreferences("guest", Context.MODE_PRIVATE).getInt(ramKey(forOs), ramDefault(c, forOs));
-        for (int ok : forOs == WATCH ? RAM_CHOICES_WATCH : RAM_CHOICES_26) {
-            if (ok == mib) {
-                return mib;
-            }
-        }
-        return ramDefault(c, forOs);   // a size not offered
-    }
-
-    static void setRamMiB(Context c, int forOs, int mib) {
-        // a new size: a size accepted by a Go back no longer counts (keptRamKey)
-        c.getSharedPreferences("guest", Context.MODE_PRIVATE).edit().putInt(ramKey(forOs), mib)
-                .remove(keptRamKey(c, forOs)).apply();
-    }
-
-    /** The RAM (MiB) the running iOS 26 or watch booted with, or loaded a save of (kept with each save). */
+    /** The RAM (MiB) iOS 16 booted with. */
     private static volatile int bootRamMiB;
 
     static int bootRamMiB() {
@@ -536,153 +331,10 @@ final class Guest {
         return new File(c.getFilesDir(), userPrefix(c) + tag + ".ram");
     }
 
-    /** The RAM save @tag was made with; saves from before the setting (2026-11-09) ran on the trees' own size. */
-    private static int savedRam(Context c, String tag, int forOs) {
-        try {
-            return Integer.parseInt(new String(java.nio.file.Files.readAllBytes(
-                    new File(c.getFilesDir(), diskName(c, forOs) + "." + tag + ".ram").toPath()),
-                    java.nio.charset.StandardCharsets.US_ASCII).trim());
-        } catch (IOException | NumberFormatException e) {
-            return forOs == WATCH ? 3072 : 4096;
-        }
-    }
-
-    /** What save @tag of @forOs opens with: "3 GB · 4 vCPU" (iOS 16: its vCPUs; its RAM is fixed). */
-    static String hardware(Context c, int forOs, String tag) {
-        int cpus = savedCpus(c, forOs, tag);
-        return (forOs == IOS16 ? "" : savedRam(c, tag, forOs) / 1024 + " GB · ") + cpus + " vCPU";
-    }
-
-    /**
-     * Save @tag of @forOs was made with other hardware than a boot gets now (the memory setting changed since):
-     * its quick save is then a way back, not the next start (the start boots with the setting). A Go back to such a
-     * save accepts its size (keptRamKey), so that run's own later quick saves resume as usual, until the memory
-     * setting changes again.
-     */
-    static boolean otherHardware(Context c, int forOs, String tag) {
-        if (forOs == IOS16) {
-            return false;
-        }
-        int ram = savedRam(c, tag, forOs);
-        return ram != ramMiB(c, forOs) && ram != c.getSharedPreferences("guest", Context.MODE_PRIVATE).getInt(keptRamKey(c, forOs), 0);
-    }
-
-    private static String keptRamKey(Context c, int forOs) {
-        return keptRamKey(diskName(c, forOs));
-    }
-
-    private static String keptRamKey(String disk) {
-        return "kept-ram-" + disk;
-    }
-
-    /**
-     * @src with @mib of RAM (/chosen dram-size, the size in /memory reg, /product/util's base right after it:
-     * dt-phone.py --ram-gib) and, @twoX, /chosen/display-scale 2; written next to the app's files when missing or
-     * older. The tree itself is returned when nothing changes.
-     */
-    private static File tree(Context c, File src, int mib, boolean twoX) throws IOException {
-        byte[] b = java.nio.file.Files.readAllBytes(src.toPath());
-        long size = (long) mib << 20;
-        long[] at = adtRam(b, src.getName());
-        if (!twoX && at[3] == size) {
-            return src;
-        }
-        File out = new File(c.getFilesDir(), src.getName() + (twoX ? "-2x" : "") + (at[3] == size ? "" : "-" + mib + "m"));
-        if (out.isFile() && out.lastModified() >= src.lastModified()) {
-            return out;
-        }
-        if (twoX) {
-            b = twoX(b, src.getName());
-        }
-        java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(b).order(java.nio.ByteOrder.LITTLE_ENDIAN);
-        long base = bb.getLong((int) at[1]);
-        bb.putLong((int) at[0], size);
-        bb.putLong((int) at[1] + 8, size);
-        bb.putLong((int) at[2], base + size);
-        File tmp = new File(out.getPath() + ".tmp");
-        java.nio.file.Files.write(tmp.toPath(), b);
-        if (!tmp.renameTo(out)) {
-            throw new IOException("cannot write " + out);
-        }
-        return out;
-    }
-
-    /** Offsets of /chosen dram-size, /memory reg and /product/util reg in an Apple device tree, and the RAM size. */
-    private static long[] adtRam(byte[] b, String name) throws IOException {
-        java.nio.ByteBuffer bb = java.nio.ByteBuffer.wrap(b).order(java.nio.ByteOrder.LITTLE_ENDIAN);
-        long[] r = {-1, -1, -1, 0};
-        int end = adtWalk(bb, 0, "", r);
-        if (end != b.length || r[0] < 0 || r[1] < 0 || r[2] < 0) {
-            throw new IOException(name + ": no /chosen dram-size, /memory reg or /product/util reg");
-        }
-        r[3] = bb.getLong((int) r[0]);
-        return r;
-    }
-
-    private static int adtWalk(java.nio.ByteBuffer bb, int o, String path, long[] r) {
-        int np = bb.getInt(o), nc = bb.getInt(o + 4);
-        o += 8;
-        String nodeName = "?";
-        java.util.Map<String, Integer> props = new java.util.HashMap<>();
-        for (int i = 0; i < np; i++) {
-            byte[] n = new byte[32];
-            bb.position(o);
-            bb.get(n);
-            int z = 0;
-            while (z < 32 && n[z] != 0) {
-                z++;
-            }
-            String pn = new String(n, 0, z, java.nio.charset.StandardCharsets.US_ASCII);
-            int ln = bb.getInt(o + 32) & 0x7fffffff;
-            props.put(pn, o + 36);
-            if ("name".equals(pn)) {
-                int k = 0;
-                while (k < ln && bb.get(o + 36 + k) != 0) {
-                    k++;
-                }
-                byte[] v = new byte[k];
-                bb.position(o + 36);
-                bb.get(v);
-                nodeName = new String(v, java.nio.charset.StandardCharsets.US_ASCII);
-            }
-            o += 36 + ((ln + 3) & ~3);
-        }
-        String here = path.isEmpty() ? nodeName : path + "/" + nodeName;
-        if (nodeName.equals("chosen") && props.containsKey("dram-size")) {
-            r[0] = props.get("dram-size");
-        } else if (nodeName.equals("memory") && props.containsKey("reg")) {
-            r[1] = props.get("reg");
-        } else if (here.endsWith("/product/util") && props.containsKey("reg")) {
-            r[2] = props.get("reg");
-        }
-        for (int i = 0; i < nc; i++) {
-            o = adtWalk(bb, o, here, r);
-        }
-        return o;
-    }
-
-    /** The 2x screen's tree: /chosen/display-scale 2 (a 32-byte property name, a 4-byte length, the value). */
-    private static byte[] twoX(byte[] b, String tree) throws IOException {
-        byte[] name = java.util.Arrays.copyOf("display-scale".getBytes(java.nio.charset.StandardCharsets.US_ASCII), 32);
-        int at = -1;
-        for (int i = 0; i + 40 <= b.length; i += 4) {
-            int k = 0;
-            while (k < 32 && b[i + k] == name[k]) {
-                k++;
-            }
-            if (k == 32) {
-                if (at >= 0) {
-                    throw new IOException(tree + " has two display-scale properties");
-                }
-                at = i;
-            }
-        }
-        if (at < 0 || (b[at + 32] & 0xff) != 4) {
-            throw new IOException(tree + " has no 4-byte display-scale");
-        }
-        b[at + 36] = 2;
-        b[at + 37] = b[at + 38] = b[at + 39] = 0;
-        return b;
+    /** What save @tag opens with: iOS 16's vCPUs; its RAM is fixed at 7 GiB. */
+    static String hardware(Context c, String tag) {
+        int cpus = savedCpus(c, tag);
+        return cpus + " vCPU";
     }
 
     private static void ensureUserDisk(Context c, File g) throws IOException {
@@ -690,83 +342,12 @@ final class Guest {
         if (u.exists()) {
             return;
         }
-        String base = os(c) == WATCH ? WatchProfile.BASE
-                : os(c) != IOS26 ? "disk.qcow2" : aodFiles(g) ? AOD26_BASE : "root26r.qcow2";
         String[] r = Emu.qemuImg(c, "create", "-q", "-f", "qcow2", "-F", "qcow2",
-                "-b", new File(g, base).getPath(), u.getPath());
+                "-b", new File(g, "disk.qcow2").getPath(), u.getPath());
         if (!"0".equals(r[0])) {
             u.delete();
             throw new IOException("qemu-img create: " + r[1].trim());
         }
-        if (os(c) == IOS26) {
-            Screen26.forget(c, diskName(c, IOS26));     // a new disk: its cache is the installed disk's (fitScreen26)
-        }
-    }
-
-    /**
-     * iOS 26's disk and the screen it is about to start at (Screen26): a 2x disk whose MobileGestalt cache has not
-     * been looked at with this build goes through the helper VM once, about half a minute. A cache of another
-     * screen is moved aside there; the quick saves then hold iOS as it ran with it, and loading one would bring
-     * the cache back with the rest of the disk, so they go and iOS boots. A 3x disk has the installed disk's own
-     * screen (the setup and a PC boot iOS at 3x only). Returns the state to load, or null for a boot.
-     *
-     * The same helper VM run puts the Auto-Lock folder right (Screen26.lockFixed), which holds only for a start
-     * that boots: so a disk not yet booted with it goes through the run before its next boot, at either scale.
-     */
-    private static String fitScreen26(Context c, String loadTag) throws IOException {
-        boolean twoX = scale26(c) == 2;
-        int w = twoX ? FB26_W * 2 / 3 : FB26_W, h = twoX ? FB26_H * 2 / 3 : FB26_H;
-        String disk = diskName(c, IOS26);
-        boolean screenDue = twoX && !Screen26.fits(c, disk, w);
-        if (!twoX && !Screen26.fits(c, disk, w)) {
-            Screen26.mark(c, disk, w);
-        }
-        boolean lockDue = Screen26.lockFixed(c, disk) == 0;
-        if (!screenDue && !(lockDue && willBoot(c, loadTag))) {
-            return loadTag;
-        }
-        String before = state;
-        preparing = screenDue ? "Setting iOS 26 up for the 2x screen (once, about half a minute)\u2026"
-                : "Checking iOS 26's settings before this boot (once, about half a minute)\u2026";
-        state = "preparing";
-        try {
-            if (Screen26.fit(c, userDisk(c, IOS26), w, h)) {
-                String why = dropQuick(c);
-                AppLog.note(c, "screen26: the quick saves were made with the other screen's cache: "
-                        + (why == null ? "deleted" : "not loaded (" + why + ")") + "; booting");
-                loadTag = null;
-            }
-            Screen26.mark(c, disk, w);
-            if (willBoot(c, loadTag)) {
-                Screen26.markLock(c, disk);     // this boot has the folder; a loaded save would not
-            }
-        } finally {
-            state = before;
-            preparing = null;
-        }
-        return loadTag;
-    }
-
-    /**
-     * A start of iOS 26 asked to load @loadTag will boot instead: none asked for, no such save, or the quick save
-     * is only a way back (after a Turn off, or made with other hardware than the settings: dropStaleQuick,
-     * quickWithOtherHardware decide the same in start26).
-     */
-    private static boolean willBoot(Context c, String loadTag) {
-        if (loadTag == null) {
-            return true;
-        }
-        List<Snap> saves = snapshots(c, IOS26);
-        if (isQuick(loadTag)) {
-            Snap q = newestQuick(saves);
-            return q == null || quickStale(c, IOS26) || otherHardware(c, IOS26, q.tag);
-        }
-        for (Snap s : saves) {
-            if (s.tag.equals(loadTag)) {
-                return false;
-            }
-        }
-        return true;
     }
 
     /** One saved state (qcow2 internal snapshot) in the user disk. */
@@ -791,22 +372,18 @@ final class Guest {
 
     /** The saved states, newest first; through QMP while iOS runs (the disk is open then). Not on the UI thread. */
     static List<Snap> snapshots(Context c) {
-        return snapshots(c, os(c));
-    }
-
-    static List<Snap> snapshots(Context c, int forOs) {
         String text = "";
         Qmp q = qmp;
-        if (running() && runningOs == forOs && q != null) {
+        if (running() && q != null) {
             String r = q.hmp("info snapshots", 15000);
             try {
                 text = r == null ? "" : new org.json.JSONObject(r).optString("return", "");
             } catch (org.json.JSONException ignored) {
                 // no list
             }
-        } else if (userDisk(c, forOs).exists() && !(running() && runningOs == forOs)) {
+        } else if (userDisk(c).exists() && !running()) {
             try {
-                text = Emu.qemuImg(c, "snapshot", "-l", userDisk(c, forOs).getPath())[1];
+                text = Emu.qemuImg(c, "snapshot", "-l", userDisk(c).getPath())[1];
             } catch (IOException ignored) {
                 // no list
             }
@@ -833,10 +410,10 @@ final class Guest {
     }
 
     /** The quick slots in the user disk, newest first, both of them (QEMU not running on it). */
-    private static List<Snap> quickSlots(Context c, int forOs) {
+    private static List<Snap> quickSlots(Context c) {
         List<Snap> out = new ArrayList<>();
         try {
-            String text = Emu.qemuImg(c, "snapshot", "-l", userDisk(c, forOs).getPath())[1];
+            String text = Emu.qemuImg(c, "snapshot", "-l", userDisk(c).getPath())[1];
             for (String line : text.split("\\r?\\n")) {
                 java.util.regex.Matcher m = SNAP_ROW.matcher(line);
                 if (m.find() && isQuick(m.group(1))) {
@@ -854,11 +431,11 @@ final class Guest {
      * Before a start that wants the quick-boot state: the newest quick slot's tag (an older one, left by a
      * save whose last second did not come, goes now), or QUICK when there is none (then the start boots).
      */
-    private static String resolveQuick(Context c, int forOs, String loadTag) {
-        if (!QUICK.equals(loadTag) || !userDisk(c, forOs).exists()) {
+    private static String resolveQuick(Context c, String loadTag) {
+        if (!QUICK.equals(loadTag) || !userDisk(c).exists()) {
             return loadTag;
         }
-        List<Snap> q = quickSlots(c, forOs);
+        List<Snap> q = quickSlots(c);
         for (int i = 1; i < q.size(); i++) {
             String why = deleteSnapshot(c, q.get(i).tag);
             AppLog.note(c, "an older quick save " + q.get(i).tag + " (" + q.get(i).date + ") beside "
@@ -908,9 +485,7 @@ final class Guest {
                 String d = q.hmp("delvm " + o.tag, 60000);
                 savedLedsFile(c, o.tag).delete();
                 savedCpusFile(c, o.tag).delete();
-                savedClockFile(c, o.tag).delete();
                 savedRamFile(c, o.tag).delete();
-                savedNoKbdFile(c, o.tag).delete();
                 if (d == null || !d.replace(" ", "").equals("{\"return\":\"\"}")) {
                     AppLog.note(c, "the older quick save " + o.tag + " stays until the next start: delvm " + d);
                 }
@@ -941,9 +516,7 @@ final class Guest {
     static String deleteSnapshot(Context c, String tag) {
         savedLedsFile(c, tag).delete();
         savedCpusFile(c, tag).delete();
-        savedClockFile(c, tag).delete();
         savedRamFile(c, tag).delete();
-        savedNoKbdFile(c, tag).delete();
         Qmp q = qmp;
         if (running() && q != null) {
             String r = q.hmp("delvm " + tag, 60000);
@@ -986,20 +559,20 @@ final class Guest {
      * until the next quick save replaces it), or a load of it that failed and could not be deleted. It never
      * loads by itself, or the disk would go back to that save; only goBack loads it, when the user asks.
      */
-    private static String staleKey(Context c, int forOs) {
-        return staleKey(diskName(c, forOs));
+    private static String staleKey(Context c) {
+        return staleKey(diskName(c, IOS16));
     }
 
     private static String staleKey(String disk) {
         return "quick-stale-" + disk;
     }
 
-    static boolean quickStale(Context c, int forOs) {
-        return c.getSharedPreferences("guest", Context.MODE_PRIVATE).getBoolean(staleKey(c, forOs), false);
+    static boolean quickStale(Context c) {
+        return c.getSharedPreferences("guest", Context.MODE_PRIVATE).getBoolean(staleKey(c), false);
     }
 
-    private static void setQuickStale(Context c, int forOs, boolean stale) {
-        c.getSharedPreferences("guest", Context.MODE_PRIVATE).edit().putBoolean(staleKey(c, forOs), stale).commit();
+    private static void setQuickStale(Context c, boolean stale) {
+        c.getSharedPreferences("guest", Context.MODE_PRIVATE).edit().putBoolean(staleKey(c), stale).commit();
     }
 
     /**
@@ -1026,7 +599,7 @@ final class Guest {
         } catch (IOException ignored) {
             // no log: nothing to read
         }
-        if (lastOff > lastSave && lastFail > lastSave && userDisk(c, IOS16).exists()) {
+        if (lastOff > lastSave && lastFail > lastSave && userDisk(c).exists()) {
             setQuickStale(c, IOS16, true);
             AppLog.note(c, "the log shows a Turn off whose quick-save delete failed: the old quick save is not loaded");
         }
@@ -1037,12 +610,10 @@ final class Guest {
      * Before a start: a stale quick save (the way back after a Turn off) stays on the disk, but @loadTag never
      * names it: the start boots. The next quick save replaces it (saveQuick's rotation), or goBack loads it.
      */
-    private static String dropStaleQuick(Context c, int forOs, String loadTag) {
-        if (forOs == IOS16) {
-            staleFromOldLog(c);
-        }
-        if (!quickStale(c, forOs)) {
-            return resolveQuick(c, forOs, loadTag);
+    private static String dropStaleQuick(Context c, String loadTag) {
+        staleFromOldLog(c);
+        if (!quickStale(c)) {
+            return resolveQuick(c, loadTag);
         }
         if (isQuick(loadTag)) {
             AppLog.note(c, "the quick save is a way back (after a Turn off), not loaded: booting");
@@ -1050,12 +621,12 @@ final class Guest {
         return isQuick(loadTag) ? null : loadTag;
     }
 
-    /**
-     * Quick save @quick of @forOs is a way back, not the next start: kept after a Turn off, or made with other
-     * hardware than the settings give a boot now.
-     */
-    static boolean isWayBack(Context c, int forOs, Snap quick) {
-        return quick != null && isQuick(quick.tag) && (quickStale(c, forOs) || otherHardware(c, forOs, quick.tag));
+    static boolean isWayBack(Context c, Snap quick) {
+        return quick != null && isQuick(quick.tag) && quickStale(c);
+    }
+
+    private static boolean otherHardware(Context c, String tag) {
+        return false;   // iOS 16: RAM is fixed, so no hardware change
     }
 
     /**
@@ -1063,32 +634,19 @@ final class Guest {
      * hardware; its memory size counts as accepted for this disk's quick saves until the setting changes (boots keep
      * the setting). The caller then starts iOS, or loads it into the running one.
      */
-    static void goBack(Context c, int forOs, String tag) {
-        setQuickStale(c, forOs, false);
-        if (otherHardware(c, forOs, tag)) {
-            c.getSharedPreferences("guest", Context.MODE_PRIVATE).edit().putInt(keptRamKey(c, forOs), savedRam(c, tag, forOs)).commit();
-        }
-        AppLog.note(c, "going back to the quick save " + tag + " (" + hardware(c, forOs, tag) + ")");
+    static void goBack(Context c, String tag) {
+        setQuickStale(c, false);
+        AppLog.note(c, "going back to the quick save " + tag + " (" + hardware(c, tag) + ")");
     }
 
-    /**
-     * Before a start that wants the quick save: one made with other hardware (the memory setting changed since)
-     * becomes a way back and the start boots with the setting (goBack opens it).
-     */
-    private static String quickWithOtherHardware(Context c, int forOs, String loadTag) {
-        if (!isQuick(loadTag) || !userDisk(c, forOs).exists() || !otherHardware(c, forOs, loadTag)) {
-            return loadTag;
-        }
-        setQuickStale(c, forOs, true);
-        AppLog.note(c, "the quick save opens with " + hardware(c, forOs, loadTag) + ", the setting is now "
-                + ramMiB(c, forOs) / 1024 + " GB: it stays as a way back; booting");
-        return null;
+    private static String quickWithOtherHardware(Context c, String loadTag) {
+        return loadTag;
     }
 
     // -- the user disk's health
 
-    private static String dirtyKey(Context c, int forOs) {
-        return dirtyKey(diskName(c, forOs));
+    private static String dirtyKey(Context c) {
+        return dirtyKey(diskName(c, IOS16));
     }
 
     private static String dirtyKey(String disk) {
@@ -1096,8 +654,8 @@ final class Guest {
     }
 
     /** Set while QEMU runs on the disk; cleared when the run ends cleanly (save and quit, shutdown, stop + quit). */
-    private static void setDirty(Context c, int forOs, boolean dirty) {
-        c.getSharedPreferences("guest", Context.MODE_PRIVATE).edit().putBoolean(dirtyKey(c, forOs), dirty).commit();
+    private static void setDirty(Context c, boolean dirty) {
+        c.getSharedPreferences("guest", Context.MODE_PRIVATE).edit().putBoolean(dirtyKey(c), dirty).commit();
     }
 
     /** Checked once after this build is installed, and after every run that did not end cleanly. */
@@ -1108,11 +666,11 @@ final class Guest {
      * killed QEMU leaves) are harmless and freed at once. Errors in the disk's tables stop the start
      * with the counts, the disk as it is: what to do with it is the user's call.
      */
-    private static void checkDisk(Context c, int forOs) throws IOException {
-        File u = userDisk(c, forOs);
+    private static void checkDisk(Context c) throws IOException {
+        File u = userDisk(c);
         android.content.SharedPreferences p = c.getSharedPreferences("guest", Context.MODE_PRIVATE);
-        boolean dirty = p.getBoolean(dirtyKey(c, forOs), false);
-        if (!u.exists() || !dirty && p.getBoolean(CHECKED + diskName(c, forOs), false)) {
+        boolean dirty = p.getBoolean(dirtyKey(c), false);
+        if (!u.exists() || !dirty && p.getBoolean(CHECKED + diskName(c, IOS16), false)) {
             return;
         }
         long t0 = System.currentTimeMillis();
@@ -1134,33 +692,28 @@ final class Guest {
                 + r[0] + ", corruptions " + corrupt + ", leaks " + leaks + ", check errors " + errors + ", "
                 + (System.currentTimeMillis() - t0) + " ms");
         if ("2".equals(r[0]) || corrupt > 0) {
-            throw new IOException(osName(forOs) + "'s disk has " + corrupt + " errors in its tables (qemu-img check);"
+            throw new IOException("iOS 16's disk has " + corrupt + " errors in its tables (qemu-img check);"
                     + " it was left as it is. The app's log has the details.");
         }
         if ("3".equals(r[0]) || leaks > 0) {
             String[] fix = Emu.qemuImg(c, "check", "-r", "leaks", u.getPath());
             AppLog.note(c, "disk check: freed the leaked clusters, exit " + fix[0]);
         }
-        p.edit().putBoolean(CHECKED + diskName(c, forOs), true).putBoolean(dirtyKey(c, forOs), false).commit();
+        p.edit().putBoolean(CHECKED + diskName(c, IOS16), true).putBoolean(dirtyKey(c), false).commit();
     }
 
     /** iOS runs, writes and saves into the user disk: refuse to start below this much free room. */
-    /**
-     * A first save (RAM: ~3.7 / ~3 GB, 5.1 GiB at iOS 26's 6 GB) and room to write; a quick save already in the
-     * disk lowers it, since a save with too little room for two goes over it (saveQuick), down to 2 GB of room to write.
-     */
-    private static void checkRoom(Context c, int forOs) throws IOException {
+    private static void checkRoom(Context c) throws IOException {
         long free = c.getFilesDir().getUsableSpace();
-        List<Snap> q = userDisk(c, forOs).exists() ? quickSlots(c, forOs) : new ArrayList<>();
+        List<Snap> q = userDisk(c).exists() ? quickSlots(c) : new ArrayList<>();
         long quick = q.isEmpty() ? 0 : sizeBytes(q.get(0).size);
-        long iphone = (forOs == IOS26 ? (ramMiB(c, forOs) > RAM_TIGHT ? 8L : 6L) : 4L) << 30;
-        long need = Math.max(2L << 30, (forOs == WATCH ? WatchProfile.ROOM : iphone) - quick);
+        long need = Math.max(2L << 30, (4L << 30) - quick);
         AppLog.note(c, String.format(java.util.Locale.ROOT, "room: %.1f GB free, user disk %.1f GB, quick save %.1f GB,"
-                + " needs %.1f GB", free / 1e9, userDisk(c, forOs).length() / 1e9, quick / 1e9, need / 1e9));
+                + " needs %.1f GB", free / 1e9, userDisk(c).length() / 1e9, quick / 1e9, need / 1e9));
         if (free < need) {
-            throw new IOException(String.format(java.util.Locale.ROOT, "Only %.1f GB free on this phone: %s needs"
+            throw new IOException(String.format(java.util.Locale.ROOT, "Only %.1f GB free on this phone: iOS 16 needs"
                     + " %.1f GB to run and to save. Free space on the phone, or delete saves (side bar > Saves).",
-                    free / 1e9, osName(forOs), need / 1e9));
+                    free / 1e9, need / 1e9));
         }
     }
 
@@ -1199,13 +752,12 @@ final class Guest {
      * always named: an iOS 16 import once erased whichever OS was selected (2026-11-08), iOS 26's or the
      * watch's disk and saves among them.
      */
-    static void erase(Context c, int forOs) {
-        userDisk(c, forOs).delete();
-        thumbFile(c, forOs).delete();
-        String prefix = diskName(c, forOs) + ".";
+    static void erase(Context c) {
+        userDisk(c).delete();
+        thumbFile(c, IOS16).delete();
+        String prefix = diskName(c, IOS16) + ".";
         File[] f = c.getFilesDir().listFiles((d, n) -> n.startsWith(prefix)
-                && (n.endsWith(".leds") || n.endsWith(".cpus") || n.endsWith(".clock") || n.endsWith(".ram")
-                || n.endsWith(".nokbd")));
+                && (n.endsWith(".leds") || n.endsWith(".cpus") || n.endsWith(".ram")));
         if (f != null) {
             for (File x : f) {
                 x.delete();
@@ -1229,181 +781,11 @@ final class Guest {
 
     private static void keepLeds(Context c, String tag) {
         try (java.io.FileOutputStream o = new java.io.FileOutputStream(savedLedsFile(c, tag))) {
-            o.write(currentLeds(c) | (runningOs == IOS26 && aod26 ? AOD_SAVED : 0));
+            o.write(currentLeds(c));
         } catch (IOException ignored) {
             // the display then reads on after a load
         }
         keepCpus(c, tag);
-        File noKbd = savedNoKbdFile(c, tag);
-        if (kbd26 || !ios26Running()) {
-            noKbd.delete();
-        } else {
-            try {
-                noKbd.createNewFile();
-            } catch (IOException e) {
-                // read as a save with the keyboard: its load would fail, and the start falls back to a boot
-                AppLog.note(c, "cannot note that " + tag + " has no USB keyboard: " + e.getMessage());
-            }
-        }
-        if (ios26Running()) {       // iOS 26 and the watch run on the host counter (the watch on its 19.2 MHz tree)
-            try (PrintWriter w = new PrintWriter(new FileWriter(savedClockFile(c, tag)))) {
-                w.println(runningOs == WATCH ? WatchProfile.CLOCK : CLOCK_V1);
-            } catch (IOException ignored) {
-                // then it counts as a save from before the clock fix
-            }
-            if (bootRamMiB > 0) {
-                try (PrintWriter w = new PrintWriter(new FileWriter(savedRamFile(c, tag)))) {
-                    w.println(bootRamMiB);
-                } catch (IOException ignored) {
-                    // then it loads with the trees' own size, which may not be its own
-                }
-            }
-        }
-    }
-
-    /**
-     * iOS 26 runs on the phone's own counter (x-host-counter), which starts again near 0 when the phone
-     * restarts. A save made before QEMU carried the counter in its state (2026-11-05) cannot load after
-     * a restart: XNU panicked (sched_clutch, the counter went back). Saves made since have this file.
-     */
-    private static final String CLOCK_V1 = "host-counter-in-state";
-
-    private static File savedClockFile(Context c, String tag) {
-        return new File(c.getFilesDir(), userPrefix(c) + tag + ".clock");
-    }
-
-    /** Why iOS 26's save @tag cannot load on this phone now, or null when it can. */
-    private static String unloadable26(Context c, String tag) {
-        if (runningOs == WATCH) {
-            // a watch save loads only if it ran on the host counter with the 19.2 MHz tree, as the watch runs now:
-            // one from QEMU's own 24 MHz counter (before 2026-11-07 20:40) would tick at the wrong rate
-            String said = "";
-            try {
-                said = new String(java.nio.file.Files.readAllBytes(savedClockFile(c, tag).toPath()),
-                        java.nio.charset.StandardCharsets.UTF_8).trim();
-            } catch (IOException ignored) {
-                // no file: an old save
-            }
-            return WatchProfile.CLOCK.equals(said) ? null
-                    : "it was saved on the watch's older clock (QEMU's own counter), which the watch no longer runs on";
-        }
-        if (savedClockFile(c, tag).isFile()) {
-            return null;
-        }
-        long saved = savedLedsFile(c, tag).lastModified();
-        long phoneUp = System.currentTimeMillis() - android.os.SystemClock.elapsedRealtime();
-        if (saved > 0 && saved < phoneUp) {
-            return "the phone restarted since it was saved (" + new java.text.SimpleDateFormat("MM-dd HH:mm", java.util.Locale.ROOT)
-                    .format(new java.util.Date(saved)) + "), and it is older than the clock fix";
-        }
-        return null;
-    }
-
-    /**
-     * iOS 26's QEMU has its USB keyboard (usb-kbd, "ukbd"). iOS shows its own keyboard only while no hardware
-     * keyboard is attached (2026-11-10: with one, a text field came up with no keys under it), and the phone has
-     * none to pass on: iOS 26 boots without the device. A save loads only into the machine it was made in, so
-     * one made with the keyboard (every save before this) loads with it and the keyboard is unplugged once it
-     * runs (unplugKeyboard); a save made without it has a ".nokbd" file beside it. The watch and the setup's
-     * boots keep the keyboard, as they were.
-     */
-    private static volatile boolean kbd26;
-    /** This QEMU loaded a save made with the keyboard: unplugged once QMP is up. */
-    private static volatile boolean unplug26;
-    /** A save and its ".nokbd" note are one step, and so is the unplug: neither in the middle of the other. */
-    private static final Object KBD = new Object();
-
-    private static File savedNoKbdFile(Context c, String tag) {
-        return new File(c.getFilesDir(), userPrefix(c) + tag + ".nokbd");
-    }
-
-    /**
-     * Unplugs iOS 26's USB keyboard from the running QEMU (device_del: iOS sees a keyboard pulled out, and its
-     * own comes up at the next text field). The answer comes before the device is gone, so QEMU's list of
-     * devices is asked until it is.
-     */
-    private static void unplugKeyboard(Context c, Qmp q) {
-        synchronized (KBD) {
-            if (!kbd26 || qmp != q) {
-                return;
-            }
-            String r = q.call("{\"execute\":\"device_del\",\"arguments\":{\"id\":\"ukbd\"}}", 10_000);
-            for (int i = 0; i < 50 && r != null; i++) {
-                String l = q.call("{\"execute\":\"qom-list\",\"arguments\":{\"path\":\"/machine/peripheral\"}}", 5_000);
-                if (l == null) {
-                    return;         // QEMU went away
-                }
-                if (!l.contains("\"ukbd\"")) {
-                    kbd26 = false;
-                    AppLog.note(c, "keyboard: the save's USB keyboard is unplugged, iOS uses its own");
-                    return;
-                }
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    return;
-                }
-            }
-            AppLog.note(c, "keyboard: the USB keyboard did not unplug (device_del: " + r + "); iOS shows no keyboard of its own");
-        }
-    }
-
-    /** The vCPU count of the running iOS: a save loads only into a QEMU with the same -smp. */
-    private static int bootCpus = 4;
-
-    private static File savedCpusFile(Context c, String tag) {
-        return new File(c.getFilesDir(), userPrefix(c) + tag + ".cpus");
-    }
-
-    /** A save's vCPU count; 4 for the saves made before 0.1.2, which all had four. */
-    static int savedCpus(Context c, String tag) {
-        return savedCpus(c, os(c), tag);
-    }
-
-    static int savedCpus(Context c, int forOs, String tag) {
-        try {
-            int n = Integer.parseInt(new String(java.nio.file.Files.readAllBytes(
-                    new File(c.getFilesDir(), diskName(c, forOs) + "." + tag + ".cpus").toPath())).trim());
-            return n >= 1 && n <= 8 ? n : 4;
-        } catch (IOException | NumberFormatException e) {
-            return 4;
-        }
-    }
-
-    private static void keepCpus(Context c, String tag) {
-        try (PrintWriter w = new PrintWriter(new FileWriter(savedCpusFile(c, tag)))) {
-            w.println(bootCpus);
-        } catch (IOException ignored) {
-            // read as 4: a load then fails and the start falls back to a boot
-        }
-    }
-
-    static int currentLeds(Context c) {
-        try (java.io.RandomAccessFile in = new java.io.RandomAccessFile(ledsFile(c), "r")) {
-            int b = in.read();
-            return b < 0 ? 0 : b;
-        } catch (IOException e) {
-            return 0;
-        }
-    }
-
-    /** QEMU's Scroll Lock LED bit: ASoftware's XNU lights it while iOS has the display off (xnu 0102). */
-    static final int SCROLL_LOCK_LED = 1;
-
-    /**
-     * iOS 26 is in its Always On Display as far as the app knows: it went there at the app's side button (iOS's
-     * own Auto-Lock is Never, APK-PLAN §6.23), and a touch has not woken it since. Kept with a save, in a bit
-     * of the save's LED byte no keyboard LED uses.
-     */
-    static volatile boolean aod26;
-    private static final int AOD_SAVED = 0x80;
-
-    static synchronized boolean running() {
-        boolean a = Render.alive(pid);
-        if (!a && pid > 0) {
-            noticeEnd(pid);
-        }
-        return a;
     }
 
     // -- QEMU's own ends, for the crash report (CrashReport)
@@ -1553,10 +935,8 @@ final class Guest {
             throw new IOException("cannot start the crash test");
         }
         state = "booting";
-        boolean v = os != IOS16;
         // the engine the system runs on, so the record's engine line (and its SHA-1) is a real one
-        track(os, false, "a crash test", logAt, bootCpus, v ? ramMiB(c, os) : 7168, v ? fb26W + "x" + fb26H : "",
-                v ? Emu.qemu26Path(c) : Emu.qemuPath(c));
+        track(IOS16, false, "a crash test", logAt, bootCpus, 7168, "", Emu.qemuPath(c));
     }
 
     static synchronized int pid(Context c) {
@@ -1579,9 +959,6 @@ final class Guest {
                     try {
                         q.connect(sock.getPath(), 5000);
                         qmp = q;
-                        if (unplug26 && runningOs == IOS26 && pid == forPid) {
-                            unplugKeyboard(c, q);
-                        }
                         return;
                     } catch (IOException e) {
                         q.close();
@@ -1658,43 +1035,13 @@ final class Guest {
         }
         String why = lastWords(c);
         if (why.contains("max_map_count") || why.contains("kernel mappings")) {
-            // reims' views of iOS's graphics memory take a mapping per 16 KiB page: Android allows an app
-            // 65,530 (APK-PLAN §6.19)
-            return "its graphics memory used up the 65,530 memory mappings Android gives an app (a known limit"
-                    + " of this version). Start it again; the 2x screen (iOS 26's menu on the home screen) needs fewer.";
+            return "its graphics memory used up the memory mappings Android gives an app (a known limit"
+                    + " of this version). Start it again; its disk and saves are kept.";
         }
         return why;
     }
 
-    /** The last iOS 26 or watchOS QEMU started in the GPU's compatibility mode (start26, GpuCheck.noSparse). */
-    static volatile boolean compat26;
-    /** ...and it was one of the setup's own boots, whose failures the setup reports itself. */
-    private static volatile boolean compatSetupRun;
-    /** The QEMU whose end in that mode the screen has told of (once per QEMU). */
-    private static int compatToldPid = -1;
-
-    /**
-     * True once per QEMU: the iOS 26 or watchOS that ran in the compatibility mode ended by itself. The app's own
-     * ends (Save and close, Turn off, stop) let go of the pid (forget, stop), and a save or a Turn off in progress
-     * has its own state; a QEMU that died while it loaded a save ("resuming") is the start's own failure, which
-     * GuestService answers with a boot.
-     */
-    static synchronized boolean endedInCompatMode() {
-        if (!compat26 || compatSetupRun || !ios26Running() || pid <= 0 || pid == compatToldPid || Render.alive(pid)
-                || !("running".equals(state) || "booting".equals(state))) {
-            return false;
-        }
-        compatToldPid = pid;
-        return true;
-    }
-
-    /** The saved state this QEMU started from, null after a boot. */
-    static volatile String loadedTag;
-
-    /**
-     * The QEMU stop() let go of (iOS 26's ends on a thread of its own, iOS 16's on SIGTERM): it may
-     * still hold the user disk for a few seconds.
-     */
+    /** The QEMU stop() let go of: it may still hold the user disk for a few seconds. */
     private static volatile int endingPid = -1;
 
     /**
@@ -1711,7 +1058,7 @@ final class Guest {
                 endingPid = -1;     // reaped: never wait on a pid a later QEMU may get
                 e = -1;
             }
-            if (!saving() && e <= 0 && ending26.get() == 0) {
+            if (!saving() && e <= 0) {
                 return true;
             }
             if (System.currentTimeMillis() > end) {
@@ -1739,27 +1086,6 @@ final class Guest {
         }
     }
 
-    private static final Object PREPARING = new Object();
-
-    /**
-     * What a start does before start(), off this class's lock: the screens ask running() many times a second
-     * and would stand still behind a start that held the lock for half a minute. That is iOS 26's 2x disk and
-     * its screen (fitScreen26, the state "preparing" meanwhile); start26 does the same itself for a start that
-     * did not come through here. Returns the state to load, or null for a boot.
-     */
-    static String prepare(Context c, String loadTag) throws IOException {
-        synchronized (PREPARING) {
-            if (setupBoot != null || running() || selected(c) != IOS26 || missing26(c) != null
-                    || (scale26(c) != 2 || Screen26.fits(c, diskName(c, IOS26), FB26_W * 2 / 3))
-                    && Screen26.lockFixed(c, diskName(c, IOS26)) != 0) {
-                return loadTag;
-            }
-            ensureUserDisk(c, dir26(c));
-            checkDisk(c, IOS26);
-            return fitScreen26(c, loadTag);
-        }
-    }
-
     /** Starts iOS: from the saved state @loadTag when there is one (QUICK: quick boot), else a boot. */
     static synchronized void start(Context c, String loadTag) throws IOException {
         resumed = false;    // until this start says otherwise: the service reads it after
@@ -1772,19 +1098,14 @@ final class Guest {
         }
         File links = Emu.linkLibraries(c);
         writeResolvConf(c);
-        if (selected(c) == IOS26 || selected(c) == WATCH) {
-            start26(c, links, loadTag);
-            return;
-        }
         runningOs = IOS16;
         appContext = c.getApplicationContext();
         File g = guestDir(c);
         File run = runDir(c);
         ensureUserDisk(c, g);
-        loadTag = dropStaleQuick(c, IOS16, loadTag);
-        loadTag = quickWithOtherHardware(c, IOS16, loadTag);
-        checkRoom(c, IOS16);
-        checkDisk(c, IOS16);
+        loadTag = dropStaleQuick(c, loadTag);
+        checkRoom(c);
+        checkDisk(c);
         List<Snap> saves = loadTag == null ? new ArrayList<>() : snapshots(c);
         resumed = false;
         StringBuilder tags = new StringBuilder();
@@ -1878,7 +1199,7 @@ final class Guest {
         for (Map.Entry<String, String> e : env.entrySet()) {
             envp.add(e.getKey() + "=" + e.getValue());
         }
-        setDirty(c, IOS16, true);
+        setDirty(c, true);
         endingByApp = -1;
         noticedPid = -1;
         pid = Render.spawn(cmd.toArray(new String[0]), envp.toArray(new String[0]),
@@ -1891,364 +1212,8 @@ final class Guest {
         connectQmp(c, pid);
     }
 
-    /** For the ends that come without one (stop() on the UI thread, end26 on its own). */
+    /** For the ends that come without one (stop() on the UI thread). */
     private static volatile Context appContext;
-
-    /**
-     * iOS 26: -M vresearch with the GPU through reims + metal2vulkan on Turnip (libqemu26.so, the
-     * NDK build with reims linked in), the command line of the Termux runs (run-ios26-nat.sh) with
-     * the flags measured on 2026-11-05 (ANDROID-S25.md §8.13): 24 stubs, the host's counter
-     * (19.2 MHz device tree), the TLBI filter on. Its frames come back through ASOFT_FRAME_FD.
-     */
-    static final String CPU26 = "max,pauth-impdef=on,x-el0-pac-off=on,sve=off,sme=off,x-host-counter=on,x-keep-kernel-tlb=off";
-
-    /**
-     * Debug builds: ios26.txt in the app's external folder changes one start for a test, a line each:
-     * cpu=..., dtree=NAME (in the iOS 26 folder), cache=writeback, env.NAME=VALUE (QEMU's environment),
-     * arg=... (one more QEMU argument, in order). Release builds read nothing.
-     */
-    /** The running iOS 26's ios26.txt settings (AutoSave reads its own from them); empty in release builds. */
-    private static volatile Map<String, String> lastOverrides26 = java.util.Collections.emptyMap();
-
-    static Map<String, String> overrides26() {
-        return lastOverrides26;
-    }
-
-    private static Map<String, String> overrides26(Context c, List<String> args) {
-        Map<String, String> m = new java.util.LinkedHashMap<>();
-        if ((c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) == 0) {
-            return m;
-        }
-        try {
-            for (String l : java.nio.file.Files.readAllLines(new File(c.getExternalFilesDir(null), "ios26.txt").toPath())) {
-                l = l.trim();
-                int eq = l.indexOf('=');
-                if (l.isEmpty() || l.startsWith("#") || eq < 1) {
-                    continue;
-                }
-                if (l.startsWith("arg=")) {
-                    args.add(l.substring(4));
-                } else {
-                    m.put(l.substring(0, eq), l.substring(eq + 1));
-                }
-            }
-        } catch (IOException ignored) {
-            // no test file
-        }
-        return m;
-    }
-
-    /**
-     * A boot the setup from Apple makes on a disk it is building (PhoneSetup26: iOS 26's first boot and its
-     * wallpaper boot, the watch's first boot), as the PC installer's Start-iOS26.ps1 -Keep / Start-watchOS.ps1
-     * -FirstBoot do: that disk itself (no user disk, no quick boot), the given kernel, trees and trust cache,
-     * and the guest's root shell on a UNIX socket (console.sock, logged to serial.txt) for the setup's checks.
-     */
-    static final class SetupBoot {
-        boolean watch;
-        File disk, bootkc, sptm, txm, dtree, tc, ramdisk;
-    }
-
-    /** The setup boot the next start26 makes, or null for the user's own iOS. */
-    private static volatile SetupBoot setupBoot;
-
-    /** Starts @b (blocking until QEMU is up, as start does); the setup ends it with stopAndWait or a QMP quit. */
-    static synchronized void startSetup(Context c, SetupBoot b) throws IOException {
-        if (running()) {
-            throw new IOException("iOS is running: close it first");
-        }
-        if (qmp != null) {
-            qmp.close();
-            qmp = null;
-        }
-        File links = Emu.linkLibraries(c);
-        writeResolvConf(c);
-        setupBoot = b;
-        try {
-            start26(c, links, null);
-        } finally {
-            setupBoot = null;
-        }
-    }
-
-    /** The memfd iOS 26's frames come in (this process's descriptor), -1 before a start. */
-    private static volatile int frameFd26 = -1;
-
-    /**
-     * How many different colours a sample of the running iOS 26's or watch's frame has (every 7th pixel of
-     * every 7th row), -1 when it cannot be read: the setup tells the Apple logo (a few) from a face or a
-     * home screen (hundreds), as the PC installer tells them by the size of a screendump.
-     */
-    static int frameVariety() {
-        if (frameFd26 < 0) {
-            return -1;
-        }
-        // (pread on the memfd: /proc/self/fd/N of a memfd does not open for an app)
-        int w = fb26W, h = fb26H;
-        java.util.HashSet<Integer> seen = new java.util.HashSet<>();
-        byte[] row = new byte[w * 4];
-        for (int y = 0; y < h; y += 7) {
-            if (Render.readFrame((long) y * w * 4, row, row.length) != row.length) {
-                return -1;
-            }
-            for (int x = 0; x < w; x += 7) {
-                seen.add((row[x * 4] & 0xf0) << 8 | (row[x * 4 + 1] & 0xf0) << 4 | (row[x * 4 + 2] & 0xf0));
-            }
-        }
-        return seen.size();
-    }
-
-    static File consoleSocket(Context c) {
-        return new File(runDir(c), "console.sock");
-    }
-
-    /** iOS 26, or watchOS on the same machine (selected WATCH: WatchProfile's files, screen, CPU and buttons). */
-    private static void start26(Context c, File links, String loadTag) throws IOException {
-        SetupBoot sb = setupBoot;
-        boolean watch = sb != null ? sb.watch : selected(c) == WATCH;
-        int os = watch ? WATCH : IOS26;
-        runningOs = os;
-        appContext = c.getApplicationContext();
-        File g = watch ? WatchProfile.dir(c) : dir26(c);
-        File run = runDir(c);
-        String miss = sb != null ? null : watch ? WatchProfile.missing(c) : missing26(c);
-        if (miss != null) {
-            throw new IOException(osName(os) + " is not on this phone: no " + new File(g, miss));
-        }
-        if (sb == null) {
-            ensureUserDisk(c, g);
-            loadTag = dropStaleQuick(c, os, loadTag);
-            loadTag = quickWithOtherHardware(c, os, loadTag);
-        }
-        // the clock check: iOS 26's after a phone restart, the watch's counter mode (unloadable26)
-        String cannot = loadTag == null ? null : unloadable26(c, loadTag);
-        if (cannot != null) {
-            AppLog.note(c, "not loading " + loadTag + ": " + cannot + "; booting");
-            if (isQuick(loadTag)) {
-                dropQuick(c);       // it never loads on this phone again (a named save stays)
-            }
-            loadTag = null;
-        }
-        if (sb == null) {
-            checkRoom(c, os);
-            checkDisk(c, os);
-            if (!watch) {
-                loadTag = fitScreen26(c, loadTag);
-            }
-        }
-        List<Snap> saves = loadTag == null ? new ArrayList<>() : snapshots(c, os);
-        resumed = false;
-        StringBuilder tags = new StringBuilder();
-        for (Snap s : saves) {
-            resumed |= s.tag.equals(loadTag);
-            tags.append(tags.length() > 0 ? ", " : "").append(s.tag);
-        }
-        loadedTag = resumed ? loadTag : null;
-        if (resumed && !watch && sb == null && !isQuick(loadTag)) {
-            // a save the user named takes the disk back to its day, MobileGestalt cache and all: maybe one made
-            // before the cache was looked at, so it is looked at again before the next boot (fitScreen26)
-            Screen26.forget(c, diskName(c, IOS26));
-        } else if (resumed && !watch && sb == null
-                && savedLedsFile(c, loadTag).lastModified() < Screen26.lockFixed(c, diskName(c, IOS26))) {
-            // a quick save from before the boot that had the Auto-Lock folder put right (a way back): the same
-            Screen26.forgetLock(c, diskName(c, IOS26));
-        }
-        // the record of the QEMU before reads its stderr, which this start truncates
-        CrashReport.awaitCapture(15_000);
-        long logAt = new File(runDir(c), "app.txt").length();
-        if (sb == null) {
-            CrashReport.startedAgain(c, os);
-        }
-        AppLog.keepRunLogs(c);
-        AppLog.note(c, "start " + osName(os) + " from " + g + ": wanted " + (loadTag == null ? "a boot" : loadTag) + ", saves ["
-                + tags + "] -> " + (resumed ? "-loadvm " + loadTag : "boot"));
-        CpuPlan plan = CpuPlan.forThisPhone(c);
-        int smp = resumed ? savedCpus(c, loadTag) : plan.smp;
-        AppLog.note(c, "cpus: " + smp + " vCPUs, pin " + (plan.pin.isEmpty() ? "none" : plan.pin) + "; " + plan.why);
-        bootCpus = smp;
-        new File(run, "qmp.sock").delete();
-        int leds = resumed ? savedLeds(c, loadTag) : 0;
-        aod26 = (leds & AOD_SAVED) != 0;    // a save taken in AOD loads in it
-        try (java.io.RandomAccessFile o = new java.io.RandomAccessFile(ledsFile(c), "rw")) {
-            o.write(leds & ~AOD_SAVED);
-        }
-        Render.closeGuestRam();     // iOS 16's, if it ran before: QEMU makes iOS 26's own
-        File icd = writeVulkanIcd(c, links);
-        List<String> extra = new ArrayList<>();
-        // ios26.txt (debug builds) is iOS 26's: the watch takes none of it
-        Map<String, String> ov = watch || sb != null ? new java.util.HashMap<>() : overrides26(c, extra);
-        lastOverrides26 = ov;
-        if (!ov.isEmpty() || !extra.isEmpty()) {
-            AppLog.note(c, "ios26.txt: " + ov + " " + extra);
-        }
-        boolean twoX = !watch && sb == null && scale26(c) == 2;
-        fb26W = watch ? WatchProfile.FB_W : twoX ? FB26_W * 2 / 3 : FB26_W;     // 786x1704 @2x
-        fb26H = watch ? WatchProfile.FB_H : twoX ? FB26_H * 2 / 3 : FB26_H;
-        String fb = ov.get("fb");
-        if (fb != null && fb.matches("\\d+x\\d+")) {
-            fb26W = Integer.parseInt(fb.substring(0, fb.indexOf('x')));
-            fb26H = Integer.parseInt(fb.substring(fb.indexOf('x') + 1));
-        }
-        int frameFd = Render.createFrameMemory((long) fb26W * fb26H * 4);
-        if (frameFd < 0) {
-            throw new IOException("no memfd for iOS 26's frames");
-        }
-        frameFd26 = frameFd;
-        // a disk on the AOD base gets the AOD tree and trust cache; one on root26r keeps the plain ones (the AOD
-        // tree over an unpatched libMobileGestalt takes the hardware flipbook, which kills backboardd)
-        boolean aod = sb == null && !watch && aodDisk(userDisk(c, IOS26)) && aodFiles(g);
-        aodRunning = aod;
-        String tree = aod ? DTREE26_AOD : DTREE26;
-        // the RAM: a save's own (it only loads into the size it was made with), else the one chosen on the home screen
-        String dtree, tc;
-        if (sb != null) {
-            dtree = sb.dtree.getPath();     // the setup's own trees, their own RAM
-            tc = sb.tc.getPath();
-            bootRamMiB = 0;
-        } else {
-            int ram = resumed ? savedRam(c, loadTag, os) : ramMiB(c, os);
-            bootRamMiB = ram;
-            dtree = ov.containsKey("dtree") && !watch ? new File(g, ov.get("dtree")).getPath()
-                    : tree(c, watch ? WatchProfile.part(c, WatchProfile.DTREE) : new File(g, tree), ram, twoX).getPath();
-            tc = watch ? WatchProfile.part(c, WatchProfile.TC).getPath() : new File(g, aod ? AOD26_TC : "root26m.tc").getPath();
-            AppLog.note(c, "guest RAM " + ram + " MiB" + (resumed ? " (the save's)" : ""));
-        }
-        AppLog.note(c, "screen " + fb26W + "x" + fb26H + (twoX ? " (2x)" : "") + ", device tree " + dtree
-                + (aod ? ", Always On Display (" + AOD26_BASE + ")" : ""));
-        List<String> cmd = new ArrayList<>(List.of(Emu.qemu26Path(c), "-name", watch ? "ASoftware watchOS" : "ASoftware iOS 26",
-                "-M", watch ? WatchProfile.machine() : "vresearch,fb=" + fb26W + "x" + fb26H
-                        + ",unauth-root=on,pvg=reims,aks-stub=on,amfi-lc-off=on,aks-crypt=on,acm-stub=on,hfs-dp-stub=on",
-                "-bootkc", (sb != null ? sb.bootkc : watch ? WatchProfile.part(c, WatchProfile.KERNEL) : new File(g, "bootkc")).getPath(),
-                "-sptm", (sb != null ? sb.sptm : watch ? WatchProfile.part(c, "sptm") : new File(g, "sptm")).getPath(),
-                "-txm", (sb != null ? sb.txm : watch ? WatchProfile.part(c, "txm") : new File(g, "txm")).getPath(), "-dtree", dtree,
-                "-tc", tc, "-ramdisk", (sb != null ? sb.ramdisk : watch ? WatchProfile.part(c, "rd-shell.hfs") : new File(g, "rd-shell.hfs")).getPath(),
-                "-args", "serial=3 -v debug=0x14e cpus=" + smp + " rd=disk0s1 wdt=-1 keepsyms=1 -noprogress "
-                        + "launchd_unsecure_cache=1 launchd_disable_all_timeouts=1 aks-endpoint=0 cpu_boot_timeout_secs=30",
-                "-display", "none", "-monitor", "none", "-parallel", "none",
-                // the guest's root shell (bash on the serial console) on files/run/console.sock, still logged to
-                // serial.txt: the setup's commands, Turn off's sync (powerOff), and adb (run-as + toybox nc -U). With no
-                // client QEMU drops the console's output there (wait=off), so nothing waits on it
-                "-chardev", "socket,id=con,path=" + new File(run, "console.sock").getPath() + ",server=on,wait=off,logfile="
-                        + new File(run, "serial.txt").getPath(),
-                "-serial", "chardev:con",
-                "-d", "guest_errors,unimp", "-D", new File(run, "qemu.log").getPath(),
-                "-cpu", watch ? WatchProfile.CPU : ov.getOrDefault("cpu", CPU26),
-                "-smp", String.valueOf(smp), "-accel", "tcg,thread=multi,tb-size=768",
-                // cache=none (O_DIRECT), as iOS 16's: a save's 4 GB do not go through the page cache (lmkd).
-                // Before QEMU's alignment fix (block/file-posix.c, 2026-11-05) a third of iOS 26's writes
-                // failed this way: this phone's f2fs with inline encryption fails a buffer that is not
-                // 4 KiB-aligned with EIO, which QEMU's probe took for "aligned"; since then 0 of 2,833
-                "-drive", "file=" + (sb != null ? sb.disk : userDisk(c, os)).getPath() + ",if=none,id=root,cache=" + ov.getOrDefault("cache", "none")
-                        + ",discard=unmap,format=qcow2",
-                "-object", "iothread,id=disk",
-                // ios26.txt disk-iothread=on: the disk's requests and completions on their own thread, off the
-                // main loop and the BQL; it moved them (bqlprof) but sped nothing up measurably (2026-11-05)
-                "-device", "virtio-blk-pci,drive=root" + ("on".equals(ov.get("disk-iothread")) ? ",iothread=disk" : ""),
-                "-qmp", "unix:" + qmpPath(c) + ",server,nowait",
-                "-device", "qemu-xhci,id=xhci,conditional-intr-mapping=on,nonremovable=2"));
-        // iOS 26 without a USB keyboard, so that iOS shows its own (kbd26); a save made with one loads with it
-        boolean kbd = watch || sb != null || resumed && !savedNoKbdFile(c, loadTag).isFile();
-        kbd26 = kbd;
-        unplug26 = kbd && !watch && sb == null;
-        if (kbd) {
-            cmd.add("-device");
-            cmd.add("usb-kbd,bus=xhci.0,port=1,id=ukbd,idle-reports=off");
-        }
-        cmd.add("-device");
-        cmd.add("usb-touchscreen,bus=xhci.0,port=2,id=utouch");
-        AppLog.note(c, "keyboard: " + (!kbd ? "iOS's own (no USB keyboard)" : unplug26 ? "the save has a USB keyboard: unplugged once it runs"
-                : "a USB keyboard"));
-        if (watch) {
-            WatchProfile.addButtons(cmd);
-            WatchProfile.addNetwork(cmd);
-        } else {
-            cmd.add("-device");
-            cmd.add("usb-consumer,bus=xhci.0,port=3,id=ucons");
-        }
-        cmd.add("-no-reboot");
-        if ((c.getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0) {
-            // tests: a second QMP for adb (run-as ... toybox nc -U), the app keeps the first
-            cmd.add("-qmp");
-            cmd.add("unix:" + new File(run, "qmp-test.sock").getPath() + ",server,nowait");
-        }
-        cmd.addAll(extra);
-        if (resumed) {
-            cmd.add("-loadvm");
-            cmd.add(loadTag);
-        }
-        Map<String, String> env = new java.util.HashMap<>(System.getenv());
-        Emu.baseEnv(c, links, env);
-        env.put("ASOFT_FRAME_FD", String.valueOf(frameFd));
-        env.put("VK_DRIVER_FILES", icd.getPath());
-        env.put("REIMS_VGPU_LOG", "info");
-        env.put("RUST_BACKTRACE", "1");
-        env.put("ASOFT_PAGE_BITS", "14");
-        String missing = nativeMissing();
-        if (missing.isEmpty()) {
-            env.put("ASOFT_NATIVE_EL0", "1");
-            env.put("ASOFT_NATIVE_EL0_TPIDRRO", "1");
-            env.put("ASOFT_NATIVE_EL0_STUBS", watch ? WatchProfile.STUBS : "24");
-            env.put("ASOFT_NATIVE_EL0_DELAY_MS", "20000");
-            env.put("ASOFT_NATIVE_EL0_PAC", "off");
-            env.put("ASOFT_NATIVE_EL0_STATS", "1");
-            env.put("ASOFT_NATIVE_EL0_OFF_FILE", new File(run, "native-off").getPath());
-            if (!plan.pin.isEmpty()) {
-                env.put("ASOFT_NATIVE_EL0_STUB_CPUS", plan.pin);
-            }
-        } else {
-            AppLog.note(c, "native EL0 off: this CPU lacks " + missing + "; iOS runs under TCG only");
-        }
-        if (!plan.pin.isEmpty()) {
-            env.put("ASOFT_VCPU_CPUS", plan.pin);
-        }
-        env.put("ASOFT_EL_SAMPLER", "30");
-        env.put("ASOFT_LEDS_FILE", ledsFile(c).getPath());
-        // A GPU check passed in the compatibility mode (GpuCheck.noSparse: Turnip's sparse binds from host memory
-        // read back zeros, Adreno 750): reims' older views, which import the guest's RAM by pointer and bind
-        // nothing sparse from it. The setup's own boots too: they draw through the same reims
-        boolean noSparse = GpuCheck.noSparse(c);
-        if (noSparse) {
-            env.put("REIMS_VGPU_DEFERRED_VIEWS", "0");
-        }
-        for (Map.Entry<String, String> e : ov.entrySet()) {
-            if (e.getKey().startsWith("env.")) {
-                env.put(e.getKey().substring(4), e.getValue());
-            }
-        }
-        // (an ios26.txt env.REIMS_VGPU_DEFERRED_VIEWS=1 of a test turns it back on: then it is no compatibility mode)
-        compat26 = noSparse && "0".equals(env.get("REIMS_VGPU_DEFERRED_VIEWS"));
-        compatSetupRun = sb != null;
-        if (compat26) {
-            AppLog.note(c, "gpu: compatibility mode (no sparse binds from host memory)");
-        }
-        try (PrintWriter w = new PrintWriter(new FileWriter(new File(run, "cmdline.txt")))) {
-            w.println(String.join(" ", cmd));
-        }
-        List<String> envp = new ArrayList<>();
-        for (Map.Entry<String, String> e : env.entrySet()) {
-            envp.add(e.getKey() + "=" + e.getValue());
-        }
-        if (sb == null) {
-            setDirty(c, os, true);
-        } else {
-            new File(run, "console.sock").delete();
-        }
-        endingByApp = -1;
-        noticedPid = -1;
-        pid = Render.spawn(cmd.toArray(new String[0]), envp.toArray(new String[0]),
-                new File(run, "qemu-stderr.txt").getPath(), c.getFilesDir().getPath());
-        if (pid < 0) {
-            throw new IOException("cannot start QEMU");
-        }
-        AppLog.note(c, osName(os) + " QEMU pid " + pid);
-        state = resumed ? "resuming" : "booting";
-        track(os, sb != null, resumed ? "the save " + loadTag : "a boot", logAt, smp, bootRamMiB, fb26W + "x" + fb26H,
-                Emu.qemu26Path(c));
-        connectQmp(c, pid);
-    }
-
-    /**
-     * Quick boot's save: pause iOS, write its whole state into the user disk, quit QEMU.
      * Null when saved, else why not (QEMU is stopped either way). Not synchronized: it takes
      * tens of seconds, and the screen asks running() every frame.
      */
@@ -2290,7 +1255,6 @@ final class Guest {
                 return "iOS is not running";
             }
             state = "saving";
-            int forOs = runningOs;
             long t0 = System.currentTimeMillis();
             String why = null;
             if (q.call("{\"execute\":\"stop\"}", 30000) == null) {
@@ -2303,7 +1267,7 @@ final class Guest {
             }
             long saved = System.currentTimeMillis() - t0;
             if (why == null) {
-                setQuickStale(c, forOs, false);     // a new quick save replaced the stale one
+                setQuickStale(c, false);     // a new quick save replaced the stale one
             }
             appEnds(p);     // (not before the save: QEMU ending in savevm is a crash)
             q.call("{\"execute\":\"quit\"}", 10000);
@@ -2318,7 +1282,7 @@ final class Guest {
                 stop();
             } else {
                 forget();
-                setDirty(c, forOs, false);     // QEMU flushed the disk and ended by itself
+                setDirty(c, false);     // QEMU flushed the disk and ended by itself
             }
             return why != null ? why : "saved in " + saved + " ms";
         } finally {
@@ -2342,7 +1306,7 @@ final class Guest {
             if (isQuick(tag)) {
                 String why = saveQuick(c, q);
                 if (why == null) {
-                    setQuickStale(c, runningOs, false);     // AutoSave's: it replaced a stale one
+                    setQuickStale(c, false);     // AutoSave's: it replaced a stale one
                 }
                 return why;
             }
@@ -2354,20 +1318,6 @@ final class Guest {
                 keepLeds(c, tag);
             }
             return null;
-        } finally {
-            saving.set(false);
-        }
-    }
-
-    /**
-     * Turn off without a save. iOS 16: iOS's own shutdown through QEMU's power key (system_powerdown;
-     * xnu 0100: every process gets SIGTERM, the disks are synced and unmounted, then PSCI
-     * SYSTEM_OFF ends QEMU), as holding an iPhone's side button and sliding does; at most 60 s,
-     * then QEMU is stopped. iOS 26 and the watch: the guest's sync on its root shell, then QEMU quits
-     * (vresearch has no power key; the PC launcher does the same). The quick-boot state stays, marked stale: never loaded by itself (that would put
-     * the disk back to that close), so the next start boots from the disk as iOS left it; it is offered as a
-     * way back (goBack) until the next quick save replaces it. Not on the UI thread.
-     */
     static String powerOff(Context c) {
         waitForSave();
         if (!saving.compareAndSet(false, true)) {
@@ -2381,38 +1331,12 @@ final class Guest {
             }
             appEnds(p);
             state = "turning off";
-            int forOs = runningOs;
             // from here on the quick save is not where iOS is: never loaded again, even if its delete fails
-            setQuickStale(c, forOs, true);
+            setQuickStale(c, true);
             logDiskStats(c, q);
             long t0 = System.currentTimeMillis();
             boolean clean = false;
-            String synced = null;
-            if (forOs != IOS16) {
-                // vresearch has no power key: system_powerdown reaches nothing there (no powerdown notifier in
-                // hw/arm/vresearch.c), and the guest has no launchctl/reboot/halt for its own shutdown. So, as the PC
-                // launcher does (Qmp.SerialSync): the guest's sync on its root shell, then QEMU stops and quits (its
-                // own caches flushed). Open apps close without their own save, as a pulled battery would.
-                try (GuestConsole con = new GuestConsole(consoleSocket(c))) {
-                    String r = con.run("sync", 45_000, 45_000);
-                    synced = r == null ? "no answer from the guest's shell in 45 s" : null;
-                }
-                long syncMs = System.currentTimeMillis() - t0;
-                if (q != null) {
-                    q.call("{\"execute\":\"stop\"}", 10000);
-                    q.call("{\"execute\":\"quit\"}", 10000);
-                }
-                for (int i = 0; i < 300 && Render.alive(p); i++) {
-                    try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException e) {
-                        break;
-                    }
-                }
-                clean = !Render.alive(p);
-                AppLog.note(c, "turn off: " + (synced == null ? "guest synced in " + syncMs + " ms" : synced)
-                        + (clean ? ", QEMU quit" : ", QEMU did not quit"));
-            } else if (q != null && q.call("{\"execute\":\"system_powerdown\"}", 10000) != null) {
+            if (q != null && q.call("{\"execute\":\"system_powerdown\"}", 10000) != null) {
                 for (int i = 0; i < 600 && Render.alive(p); i++) {
                     try {
                         Thread.sleep(100);
@@ -2424,7 +1348,7 @@ final class Guest {
             }
             if (clean) {
                 forget();
-                setDirty(c, forOs, synced != null);     // without the guest's sync the next start checks the disk
+                setDirty(c, false);     // QEMU flushed the disk, ended by itself
             } else {
                 stopAndWait();
             }
@@ -2460,14 +1384,6 @@ final class Guest {
     static void stopAndWait() {
         int p = pid;
         appEnds(p);
-        if (ios26Running()) {
-            Qmp q;
-            synchronized (Guest.class) {
-                q = qmp;
-                qmp = null;
-            }
-            end26(q, p);
-        }
         Render.terminate(p);
         for (int i = 0; i < 300 && Render.alive(p); i++) {
             try {
@@ -2532,23 +1448,6 @@ final class Guest {
     static synchronized void stop() {
         if (pid > 0) {
             appEnds(pid);
-        }
-        if (ios26Running() && pid > 0) {
-            Qmp q = qmp;
-            int p = pid;
-            qmp = null;
-            pid = -1;
-            state = "stopped";
-            ending26.incrementAndGet();     // counted before the thread runs: a start right after waits
-            Thread t = new Thread(() -> {
-                try {
-                    end26(q, p);
-                } finally {
-                    ending26.decrementAndGet();
-                }
-            }, "qemu-end");
-            t.start();
-            return;
         }
         endingPid = pid;
         Render.terminate(pid);

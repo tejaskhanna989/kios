@@ -273,13 +273,13 @@ final class SetupScreen {
         free.setTextColor(freeBytes < need ? ORANGE : DIM);
 
         boolean mine = !"a26".equals(s.target);
-        // (a26's own error line has its buttons: Setup26Screen)
+        // iOS 16's own error line has its buttons
         errorButtons.setVisibility(mine && s.error != null && s.record != null && !s.running ? View.VISIBLE : View.GONE);
         String note = Helper.memoryNote;
         memory.setText(note == null ? "" : note);
         memory.setVisibility(mine && s.running && note != null ? View.VISIBLE : View.GONE);
         if (s.running && "a26".equals(s.target)) {
-            // the iOS 26 / watchOS install runs (Setup26Screen shows it); one install at a time
+            // iOS 26 / watchOS are installed from Apple's setup screen
             startPause.setText("iOS 26 / watchOS are being installed");
             startPause.setEnabled(false);
             cancel.setVisibility(View.GONE);

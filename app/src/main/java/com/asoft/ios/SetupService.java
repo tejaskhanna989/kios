@@ -66,16 +66,8 @@ public class SetupService extends Service {
         c.startForegroundService(new Intent(c, SetupService.class).setAction("start").putExtra("what", "ios16"));
     }
 
-    /** iOS 26 and/or watchOS (PhoneSetup26.setWants says which), from Apple. */
-    static void startA26(Context c) {
-        c.startForegroundService(new Intent(c, SetupService.class).setAction("start").putExtra("what", "a26"));
-    }
-
     private static String title(boolean done) {
-        if (!"a26".equals(state.target)) {
-            return done ? "iOS 16 is set up" : "Installing iOS 16";
-        }
-        return done ? "iOS 26 / watchOS are set up" : "Installing iOS 26 / watchOS";
+        return done ? "iOS 16 is set up" : "Installing iOS 16";
     }
 
     /** The step can pause: a download, a decrypt (both go on where they were), a helper VM job (held). */
@@ -168,11 +160,7 @@ public class SetupService extends Service {
                 pause = false;
                 if (worker == null) {
                     new Thread(() -> {
-                        if ("a26".equals(state.target)) {
-                            cancelA26(this);
-                        } else {
-                            Installer.deleteTree(PhoneSetup.work(this));
-                        }
+                        Installer.deleteTree(PhoneSetup.work(this));
                         state.step = "";
                         state.items = new ArrayList<>();
                         stopForeground(STOP_FOREGROUND_REMOVE);
@@ -226,11 +214,6 @@ public class SetupService extends Service {
 
     /** Still downloading: nothing after the download needs the network. */
     private boolean downloadLeft() {
-        if ("a26".equals(state.target)) {
-            // from the markers: at a resume the step is still empty, and a run past its downloads waited for a
-            // network it did not need (2026-11-09: the iOS 26 wallpaper boot sat 30 min on "No internet connection")
-            return PhoneSetup26.downloadLeft(this);
-        }
         return !PhoneSetup.done(this, "ipsw") && !PhoneSetup.done(this, "disk");
     }
 
@@ -249,11 +232,7 @@ public class SetupService extends Service {
 
     /** "the iOS 16 setup", "the iOS 26 and watchOS setup": what runs, for the app's own end (AppExit). */
     private String setupName(boolean a26) {
-        if (!a26) {
-            return "the iOS 16 setup";
-        }
-        boolean i26 = PhoneSetup26.wants(this, PhoneSetup26.IOS26), w = PhoneSetup26.wants(this, PhoneSetup26.WATCH);
-        return "the " + (i26 && w ? "iOS 26 and watchOS" : w ? "watchOS" : "iOS 26") + " setup";
+        return "the iOS 16 setup";
     }
 
     private void begin() {
@@ -277,10 +256,10 @@ public class SetupService extends Service {
             wakeLock.acquire();
         }
         IpswFetch[] current = new IpswFetch[1];
-        boolean a26 = "a26".equals(state.target);
+        boolean a26 = false;
         // a helper VM job is held (SIGSTOP) while paused, too hot or low on battery off the charger, and goes on after
         Helper.hold = () -> {
-            boolean h = pause || PhoneSetup26.shouldHold(this);
+            boolean h = pause;
             state.held = h;
             return h;
         };
@@ -308,17 +287,13 @@ public class SetupService extends Service {
                     }
                     try {
                         long free = getFilesDir().getUsableSpace();
-                        long need = a26 ? PhoneSetup26.needBytes(this) : PhoneSetup.needBytes(this);
+                        long need = PhoneSetup.needBytes(this);
                         if (free < need) {
                             throw new IOException(String.format(Locale.ROOT,
                                     "Not enough room: %.1f GB free, about %.1f GB needed. Free some space, then tap Resume.", free / 1e9, need / 1e9));
                         }
                         // the helper VM gets every core, as Build-iOSDisk.ps1 gives it up to 8 (measured with 8)
-                        if (a26) {
-                            PhoneSetup26.run(this, Math.min(8, Runtime.getRuntime().availableProcessors()), progress(), this::stopNow, current);
-                        } else {
-                            PhoneSetup.run(this, Math.min(8, Runtime.getRuntime().availableProcessors()), progress(), this::stopNow, current);
-                        }
+                        PhoneSetup.run(this, Math.min(8, Runtime.getRuntime().availableProcessors()), progress(), this::stopNow, current);
                         state.finished = true;
                         state.step = "done";
                         state.text = title(true);
@@ -333,22 +308,18 @@ public class SetupService extends Service {
                         }
                         state.error = plain(e);
                         AppLog.note(this, "setup stopped: " + e);
-                        state.record = SetupRecord.write(this, a26, state.step, state.pct, state.text, e, state.error, logAt, stepSince, t0);
+                        state.record = SetupRecord.write(this, false, state.step, state.pct, state.text, e, state.error, logAt, stepSince, t0);
                         break;
                     } catch (RuntimeException e) {
                         // a bug of the app's: the setup stops with it, the app stays (a Resume tries again)
                         state.error = "The setup stopped on an error of the app's (" + e + "). Tap Resume to try again; please share the log.";
                         AppLog.note(this, "setup stopped: " + e);
-                        state.record = SetupRecord.write(this, a26, state.step, state.pct, state.text, e, state.error, logAt, stepSince, t0);
+                        state.record = SetupRecord.write(this, false, state.step, state.pct, state.text, e, state.error, logAt, stepSince, t0);
                         break;
                     }
                 }
                 if (cancel) {
-                    if (a26) {
-                        cancelA26(this);
-                    } else {
-                        Installer.deleteTree(PhoneSetup.work(this));
-                    }
+                    Installer.deleteTree(PhoneSetup.work(this));
                     state.step = "";
                     state.items = new ArrayList<>();
                     state.text = "Cancelled";
@@ -365,7 +336,7 @@ public class SetupService extends Service {
                 AppExit.end(this, AppExit.SETUP);
                 worker = null;
                 if (state.finished) {
-                    post(a26 ? "Set up: open ASoftware iOS and choose iOS 26 or watchOS" : "iOS 16 is set up: open ASoftware iOS and tap Start iOS 16", 100);
+                    post("iOS 16 is set up: open ASoftware iOS and tap Start iOS 16", 100);
                     stopForeground(STOP_FOREGROUND_DETACH);
                 } else if (state.error != null) {
                     post("Stopped: " + state.error, -1);
@@ -413,7 +384,7 @@ public class SetupService extends Service {
                         stepSince = System.currentTimeMillis();
                     }
                     stepWas = step;
-                    AppExit.detail(SetupService.this, AppExit.SETUP, SetupRecord.label("a26".equals(state.target), step));
+                    AppExit.detail(SetupService.this, AppExit.SETUP, SetupRecord.label(false, step));
                 }
                 if (!step.equals(loggedStep) || (pct >= 0 && pct >= loggedPct + 10)) {
                     loggedStep = step;
@@ -451,7 +422,7 @@ public class SetupService extends Service {
                     done += it.done.get();
                     total += it.total;
                 }
-                step("a26".equals(state.target) ? state.step : "ipsw", total > 0 ? (int) (done * 100 / total) : -1,
+                step("ipsw", total > 0 ? (int) (done * 100 / total) : -1,
                         String.format(Locale.ROOT, "Downloading from Apple: %.1f of %.1f GB", done / 1e9, total / 1e9));
             }
 
@@ -474,41 +445,6 @@ public class SetupService extends Service {
                 }
             }
         };
-    }
-
-    /**
-     * Cancel of iOS 26 / watchOS: what was downloaded and built for them goes; the shared part stays when an OS
-     * already rests on it (it is small, and the other OS would need it again), and an installed OS stays.
-     */
-    static void cancelA26(Context c) {
-        File w = PhoneSetup26.work(c);
-        boolean keepShared = PhoneSetup26.installed(c, PhoneSetup26.IOS26) || PhoneSetup26.installed(c, PhoneSetup26.WATCH);
-        if (!keepShared) {
-            Installer.deleteTree(w);
-            return;
-        }
-        for (String n : new String[] {"iphone", "os", "install", "dsc", "dscpatch"}) {
-            Installer.deleteTree(new File(w, n));
-        }
-        File[] l = w.listFiles();
-        if (l != null) {
-            for (File f : l) {
-                if (f.getName().endsWith(".qcow2")) {
-                    f.delete();
-                }
-            }
-        }
-        for (String g : new String[] {PhoneSetup26.IOS26, PhoneSetup26.WATCH}) {
-            if (PhoneSetup26.installed(c, g)) {
-                continue;
-            }
-            if (PhoneSetup26.WATCH.equals(g)) {
-                Installer.deleteTree(new File(w, "watchos"));
-            }
-            for (String[] st : PhoneSetup26.steps(g)) {
-                new File(w, "phone/" + g + "-" + st[0] + ".done").delete();
-            }
-        }
     }
 
     /** An exception as the user should read it. */

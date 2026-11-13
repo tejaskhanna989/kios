@@ -1,9 +1,8 @@
-# ASoftware iOS for Android
+# Kios - iOS 16 for Android
 
-iOS 16, and as previews iOS 26 and watchOS, in an Android app, on a stock phone: no root, locked
-bootloader, no Termux. Each can be installed on the phone itself from Apple's servers (iOS 26 and
-watchOS after a check of the phone's GPU); iOS 16 can also be brought from a PC. The companion of
-[ASoftware iOS for Windows](https://github.com/alpersamur3/asoft-ios).
+iOS 16 in an Android app, on a stock phone: no root, locked bootloader, no Termux. iOS 16 can be
+installed on the phone itself from Apple's servers or brought from a PC. The companion of
+[Kios for Windows](https://github.com/alpersamur3/asoft-ios).
 
 Research preview. Tested on a Galaxy S25 Ultra (Snapdragon 8 Elite, 12 GB RAM); iOS 16 also on a
 Galaxy A71 and a Galaxy M31 (much slower: their CPUs cannot run iOS's code natively, see below).
@@ -15,22 +14,14 @@ Nothing in it is specific to the S25 Ultra; it is the phone it is developed and 
 | | Needs | Recommended |
 |---|---|---|
 | iOS 16 | 64-bit Android 10 or later, 6 GB RAM | ARMv8.2-A or later (iOS's code runs natively), 8 GB RAM or more |
-| iOS 26, watchOS | the same, plus an Adreno GPU (Mesa's Turnip driver) | ARMv8.3-A or later (pointer authentication), 12 GB RAM |
-| Room | iOS 16 and iOS 26 about 12 GB each, watchOS about 5 GB; more while installing from Apple (below) | |
+| Room | iOS 16 about 12 GB; more while installing from Apple (below) | |
 
 - Without the ARMv8.2 features below, iOS still runs, all of it emulated, several times slower.
-- iOS 26 and watchOS are arm64e. On a CPU without pointer authentication (before ARMv8.3) their PAC
-  instructions cannot run natively; untested here, expect them to be slower or not to start.
-- Mali GPUs (most Exynos and MediaTek phones) have no Vulkan driver the GPU path works with yet: iOS
-  26 and watchOS do not run there, iOS 16 does (it draws on the CPU). Set up's GPU check says so
-  before anything is downloaded.
 - Speed is mostly the CPU's big cores: an older or smaller core is slower whatever its ARM version.
 - RAM: iOS 16 reached its lock screen on a 6 GB phone (Galaxy M31) with about 0.2 GB left to Android;
-  with less to spare, Android may close it. iOS 26 and watchOS have been run only on a 12 GB phone.
-  Their memory is set in their menu on the home screen (the three dots): iOS 26 3, 4 or 6 GB,
-  watchOS 2 or 3 GB (the smaller by default on a phone under 10 GB). On the S25 Ultra iOS 26 left
-  Android 1.5 GB at 3 GB and 0.8 to 1.0 GB at 6 GB, where the app warns that Android may close it.
-  Less RAM is a warning, not a stop.
+  with less to spare, Android may close it. iOS 16's memory is set in its menu on the home screen
+  (the three dots): on the S25 Ultra iOS 16 left Android about 1.5 GB, where the app warns that
+  Android may close it. Less RAM is a warning, not a stop.
 - Free memory for iOS (home screen, Settings): while iOS runs, the background processes of other
   apps are ended every 90 s, so Android does not close iOS for lack of memory. Android 14 and later
   let an app end only its own, so there the app asks adb's shell on the phone itself (`am kill-all`)

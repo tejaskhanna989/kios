@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout box;
-    private final Panel p26 = new Panel(Guest.IOS26), p16 = new Panel(Guest.IOS16), pWatch = new Panel(Guest.WATCH);
+    private final Panel p16 = new Panel(Guest.IOS16);
     private TextView powerWarn, freeRamValue, wadbValue, updateValue, logsValue, footer, engineLog;
     private LinearLayout updateBar, advanced;
     private TextView updateText, updateNote, updateGet, updateDismiss;
@@ -374,11 +374,7 @@ public class MainActivity extends Activity {
         box.addView(powerWarn, wlp);
         powerWarn.setVisibility(View.GONE);
 
-        box.addView(buildPanel(p26, "iOS 26", DeviceView.ISLAND, new int[] {0xff5a9bff, 0xff4a5df0, 0xff5b36cf}),
-                new LinearLayout.LayoutParams(-1, -2));
-        box.addView(buildPanel(p16, "iOS 16", DeviceView.HOME, new int[] {0xff5ad1c8, 0xff2f8fe0, 0xff3a56c9}),
-                top(new LinearLayout.LayoutParams(-1, -2), dp(12)));
-        box.addView(buildPanel(pWatch, "watchOS", DeviceView.WATCH, null), top(new LinearLayout.LayoutParams(-1, -2), dp(12)));
+        box.addView(buildPanel(p16, "iOS 16", DeviceView.HOME, new int[] {0xff5ad1c8, 0xff2f8fe0, 0xff3a56c9}));
 
         heading(box, "Settings");
         LinearLayout settings = group(box, 0);
@@ -422,7 +418,7 @@ public class MainActivity extends Activity {
         footer.setGravity(Gravity.CENTER);
         footer.setLayoutParams(top(new LinearLayout.LayoutParams(-1, -2), dp(26)));
 
-        if (saved == null && !Guest.available(this) && !Guest.available26(this)) {
+        if (saved == null && !Guest.available(this)) {
             startActivity(new Intent(this, SetupActivity.class));   // first start: set up first
         }
         if (saved == null) {
@@ -568,19 +564,17 @@ public class MainActivity extends Activity {
     // -- a panel's button and its "more" corner
 
     private static String systemName(int os) {
-        return os == Guest.WATCH ? "watchOS" : os == Guest.IOS26 ? "iOS 26" : "iOS 16";
+        return "iOS " + os;
     }
 
     private boolean installed(int os) {
-        return os == Guest.WATCH ? WatchProfile.available(this) : os == Guest.IOS26 ? Guest.available26(this) : Guest.available(this);
+        return Guest.available(this);
     }
 
     private void primaryAction(int os) {
-        if (os == Guest.IOS16 && (!Guest.available(this) || SetupService.busy())) {
+        if (!Guest.available(this) || SetupService.busy()) {
             startActivity(new Intent(this, SetupActivity.class));
-        } else if (os == Guest.IOS26 && !Guest.available26(this)) {
-            startActivity(new Intent(this, SetupActivity.class).putExtra(SetupActivity.EXTRA_IOS26, true));  // Setup26Screen
-        } else if (installed(os)) {
+        } else {
             open(os);
         }
     }
@@ -596,23 +590,15 @@ public class MainActivity extends Activity {
         if (!up) {
             m.getMenu().add(0, 1, 0, "Boot, not from the save");
         }
-        if (os == Guest.IOS26) {
-            m.getMenu().add(0, 2, 0, "Screen: " + (Guest.scale26(this) == 2 ? "2x (faster)" : "3x (sharp)"));
-        }
-        if (os != Guest.IOS16) {
-            m.getMenu().add(0, 3, 0, "Memory: " + Guest.ramMiB(this, os) / 1024 + " GB");
-        }
-        CrashReport.Record crash = CrashReport.latestFor(this, os);     // (three small files)
+        CrashReport.Record crash = CrashReport.latestFor(this, os);
         if (crash != null) {
             m.getMenu().add(0, 6, 0, "Report the last crash…");
         }
-        m.getMenu().add(0, 4, 0, os == Guest.WATCH ? "Erase the watch…" : "Erase the iPhone…");
+        m.getMenu().add(0, 4, 0, "Erase the iPhone…");
         m.getMenu().add(0, 5, 0, "Remove from this phone…");
         m.setOnMenuItemClickListener(item -> {
             switch (item.getItemId()) {
                 case 1: bootCold(os); break;
-                case 2: chooseScale26(); break;
-                case 3: chooseRam(os); break;
                 case 4: askErase(os); break;
                 case 6: CrashReport.show(this, crash); break;
                 default: askRemove(os);
@@ -637,19 +623,17 @@ public class MainActivity extends Activity {
     }
 
     private void askErase(int os) {
-        boolean watch = os == Guest.WATCH;
-        String what = watch ? "watchOS's watch" : os == Guest.IOS26 ? "iOS 26's iPhone" : "iOS 16's iPhone";
+        String what = "iOS 16's iPhone";
         new AlertDialog.Builder(this)
                 .setTitle("Erase " + what + "?")
-                .setMessage(watch ? "The watch's settings, faces and saves go; it starts as it came. watchOS itself stays."
-                        : "Its settings, installed apps and saves go; iOS starts as new. " + systemName(os) + " itself stays.")
+                .setMessage("Its settings, installed apps and saves go; iOS starts as new. iOS 16 itself stays.")
                 .setPositiveButton("Erase", (d, w) -> {
                     if (Guest.running()) {
-                        Toast.makeText(this, "Close " + Guest.osName(Guest.os(this)) + " first (side bar > Saves > Save and close)",
+                        Toast.makeText(this, "Close iOS 16 first (side bar > Saves > Save and close)",
                                 Toast.LENGTH_LONG).show();
                     } else {
                         Guest.select(this, os);
-                        Guest.erase(this, os);
+                        Guest.erase(this);
                         shown = "";
                         refresh();
                     }
@@ -674,20 +658,18 @@ public class MainActivity extends Activity {
             Toast.makeText(this, busy, Toast.LENGTH_LONG).show();
             return;
         }
-        String name = systemName(os);
+        String name = "iOS 16";
         new Thread(() -> {
             Installer.Removal r = Installer.removal(this, os);
             runOnUiThread(() -> {
                 if (isFinishing() || isDestroyed()) {
                     return;
                 }
-                String what = os == Guest.WATCH ? "watchOS itself goes from this phone, with the watch's settings, faces and saves"
-                        : name + " itself goes from this phone, with its settings, installed apps and saves";
+                String what = name + " itself goes from this phone, with its settings, installed apps and saves";
                 new AlertDialog.Builder(this)
                         .setTitle("Remove " + name + " from this phone?")
-                        .setMessage(what + (r.shared ? ", and the files it shared with " + (os == Guest.WATCH ? "iOS 26" : "watchOS")
-                                + ", which nothing else uses now" : "") + ". That frees about " + size(r.bytes) + ".\n\n"
-                                + "To have it again, Set up downloads it from Apple again" + (os == Guest.IOS16 ? " (or your PC sends it)." : "."))
+                        .setMessage(what + ". That frees about " + size(r.bytes) + ".\n\n"
+                                + "To have it again, Set up downloads it from Apple again (or your PC sends it).")
                         .setPositiveButton("Remove", (d, w) -> removeNow(os))
                         .setNegativeButton("Cancel", null)
                         .show();
@@ -701,7 +683,7 @@ public class MainActivity extends Activity {
             Toast.makeText(this, busy, Toast.LENGTH_LONG).show();
             return;
         }
-        String name = systemName(os);
+        String name = "iOS 16";
         // in front until the files are gone: nothing starts on them meanwhile
         AlertDialog wait = new AlertDialog.Builder(this).setMessage("Removing " + name + "…").setCancelable(false).show();
         new Thread(() -> {
@@ -723,7 +705,7 @@ public class MainActivity extends Activity {
                 Toast.makeText(this, text, Toast.LENGTH_LONG).show();
                 shown = "";
                 refresh();
-                if (removed && !Guest.available(this) && !Guest.available26(this) && !WatchProfile.available(this)) {
+                if (removed && !Guest.available(this)) {
                     startActivity(new Intent(this, SetupActivity.class));   // nothing left: set up first, as on a fresh app
                 }
             });
@@ -740,7 +722,7 @@ public class MainActivity extends Activity {
                 }
                 int os = Guest.os(this);
                 new AlertDialog.Builder(this)
-                        .setTitle("Turn off " + (os == Guest.WATCH ? "watchOS" : "iOS") + "?")
+                        .setTitle("Turn off iOS?")
                         .setMessage(ScreenActivity.turnOffText(os, quick))
                         .setPositiveButton("Turn off", (d, w) -> {
                             if (Guest.running()) {
@@ -810,7 +792,7 @@ public class MainActivity extends Activity {
                 .setMessage(ScreenActivity.goBackText(this, os, snap))
                 .setPositiveButton("Go back", (d, w) -> whenPowerOk(() -> {
                     Guest.select(this, os);
-                    Guest.goBack(this, os, snap.tag);
+                    Guest.goBack(this, snap.tag);
                     if (Guest.running()) {
                         GuestService.load(this, snap.tag);
                     }
@@ -836,119 +818,6 @@ public class MainActivity extends Activity {
             Guest.select(this, os);
             startActivity(new Intent(this, ScreenActivity.class));
         });
-    }
-
-    /**
-     * iOS 26's screen, 3x or 2x (Guest.scale26). 2x: the same layout with 2.25 times fewer pixels, so
-     * this phone's CPU, which draws much of iOS, is done sooner after a boot. Each scale is its own
-     * iPhone (Guest.diskName), so switching loses nothing.
-     */
-    private void chooseScale26() {
-        if (Guest.running() && Guest.os(this) == Guest.IOS26) {
-            Toast.makeText(this, "Close iOS 26 first (side bar > Saves > Save and close)", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        int now = Guest.scale26(this);
-        int other = now == 2 ? 3 : 2;
-        new AlertDialog.Builder(this)
-                .setTitle("iOS 26's screen")
-                .setMessage("Now " + (now == 2 ? "2x (faster)" : "3x (sharp, as on an iPhone)") + ".\n\n"
-                        + "2x draws 2.25 times fewer pixels: after a boot the home screen and apps come up "
-                        + "sooner on this phone; text is a little softer. Its first boot takes longer while "
-                        + "iOS makes its caches for 2x.\n\n"
-                        + "Each setting is its own iPhone, with its own settings, apps and saves; switching "
-                        + "back finds the other one as you left it.")
-                .setPositiveButton(other == 2 ? "Use 2x" : "Use 3x", (d, w) -> {
-                    Guest.setScale26(this, other);
-                    shown = "";
-                    refresh();
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    /**
-     * The guest's RAM (Guest.ramMiB): less leaves Android more, so it closes iOS less often on a phone with
-     * less RAM; more keeps more apps alive inside iOS. A save loads with the size it was made with, so a new
-     * size takes effect at the next full start.
-     */
-    private void chooseRam(int os) {
-        int[] ch = os == Guest.WATCH ? Guest.RAM_CHOICES_WATCH : Guest.RAM_CHOICES_26;
-        int now = Guest.ramMiB(this, os), def = Guest.ramDefault(this, os);
-        String[] names = new String[ch.length];
-        int pick = 0;
-        for (int i = 0; i < ch.length; i++) {
-            names[i] = ch[i] / 1024 + " GB" + (ch[i] == def ? " (default for this phone)"
-                    : ch[i] > Guest.RAM_TIGHT ? " (Android may close iOS)" : "");
-            if (ch[i] == now) {
-                pick = i;
-            }
-        }
-        int[] chosen = {pick};
-        new AlertDialog.Builder(this)
-                // (a message would hide the list: the explanation is in the title and the toast)
-                .setTitle(String.format(java.util.Locale.ROOT, "%s's memory (this phone: %.1f GB; less leaves Android more)",
-                        os == Guest.WATCH ? "watchOS" : "iOS 26", GpuCheck.ram(this) / 1e9))
-                .setSingleChoiceItems(names, pick, (d, w) -> chosen[0] = w)
-                .setPositiveButton("Use", (d, w) -> {
-                    Runnable use = () -> {
-                        Guest.setRamMiB(this, os, ch[chosen[0]]);
-                        shown = "";
-                        refresh();
-                        if (ch[chosen[0]] != now) {
-                            noteRamChange(os);
-                        }
-                    };
-                    if (ch[chosen[0]] > Guest.RAM_TIGHT && ch[chosen[0]] != now) {
-                        warnTightRam(ch[chosen[0]], use);
-                    } else {
-                        use.run();
-                    }
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    /** The guest's RAM is only part of what it costs: QEMU and the GPU's memory come on top. */
-    private void warnTightRam(int mib, Runnable use) {
-        new AlertDialog.Builder(this)
-                .setTitle("Use " + mib / 1024 + " GB?")
-                .setMessage(String.format(java.util.Locale.ROOT, "This phone has %.1f GB, and iOS needs more than the %d GB you give it, "
-                        + "for its graphics and the emulator itself. That leaves Android very little: it may close iOS while it runs, "
-                        + "and whatever was not saved is lost. If that happens, go back to a smaller size.",
-                        GpuCheck.ram(this) / 1e9, mib / 1024))
-                .setPositiveButton("Use " + mib / 1024 + " GB", (d, w) -> use.run())
-                .setNegativeButton("Cancel", null)
-                .show();
-    }
-
-    /**
-     * After the memory of @os changed: it applies from the next start, a boot; a quick save made with the other
-     * size stays as a way back (Guest.otherHardware), nothing is deleted. The snapshot list comes from qemu-img or
-     * QEMU: off the UI thread.
-     */
-    private void noteRamChange(int os) {
-        new Thread(() -> {
-            boolean up = Guest.running() && Guest.os(this) == os;
-            Guest.Snap quick = up || Guest.userDisk(this, os).exists() ? Guest.newestQuick(Guest.snapshots(this, os)) : null;
-            String name = os == Guest.WATCH ? "watchOS" : "iOS 26";
-            boolean other = quick != null && Guest.otherHardware(this, os, quick.tag);
-            String text = quick != null && !other && !up
-                    ? "Your save of " + ScreenActivity.when(quick) + " has this size: the next start goes on from it ("
-                    + Guest.hardware(this, os, quick.tag) + "). Boots use the new size."
-                    : "This applies from the next start, a boot" + (up ? " (after this run's Save and close or Turn off)" : "")
-                    + "." + (other ? " Your save of " + ScreenActivity.when(quick) + " stays as a way back; it opens with "
-                    + Guest.hardware(this, os, quick.tag) + "." : "");
-            runOnUiThread(() -> {
-                if (!isFinishing()) {
-                    new AlertDialog.Builder(this)
-                            .setTitle(name + "'s memory: " + Guest.ramMiB(this, os) / 1024 + " GB")
-                            .setMessage(text)
-                            .setPositiveButton("OK", null)
-                            .show();
-                }
-            });
-        }, "ram-change-note").start();
     }
 
     // -- the panels' states
@@ -1016,124 +885,11 @@ public class MainActivity extends Activity {
                 || Guest.running() && Guest.os(this) == os && "resuming".equals(Guest.state);
     }
 
-    /** iOS 26's panel: shown without its files too (its button leads to Set up, which installs it from Apple). */
-    private void refresh26() {
-        Panel c = p26;
-        boolean debug = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
-        String missing = Guest.missing26(this);
-        boolean twoX = Guest.scale26(this) == 2;
-        boolean up = Guest.running() && Guest.os(this) == Guest.IOS26;
-        if (missing != null) {
-            boolean busy = SetupService.busy() && "a26".equals(SetupService.state.target);
-            state(c, busy ? STARTING : OFF, busy ? "Being set up" : "Not installed");
-            detail(c, busy ? SetupService.state.text : "Downloads about 10 GB from Apple and builds it on this phone."
-                    + (debug ? " (No " + new File(Guest.dir26(this), missing).getName() + ".)" : ""));
-            buttons(c, busy ? "Show" : "Set up", false);
-            showBack(c, null);
-            showCrash(c, null);
-            c.device.show(null, false, false);
-            return;
-        }
-        if ("preparing".equals(Guest.state) && Guest.selected(this) == Guest.IOS26) {
-            String what = Guest.preparing;
-            state(c, STARTING, "Starting…");
-            detail(c, what == null ? "" : what);
-            buttons(c, "Open", false);
-            showBack(c, null);
-            showCrash(c, null);
-            return;
-        }
-        boolean starting = starting(Guest.IOS26);
-        state(c, starting ? STARTING : up ? RUNNING : READY, starting ? "Starting…" : up ? "Running" : "Ready");
-        buttons(c, up ? "Open" : "Start", up);
-        new Thread(() -> {
-            List<Guest.Snap> list = up || Guest.userDisk(this, Guest.IOS26).exists()
-                    ? Guest.snapshots(this, Guest.IOS26) : java.util.Collections.emptyList();
-            Guest.Snap quick = quickOf(list);
-            Guest.Snap back = !up && Guest.isWayBack(this, Guest.IOS26, quick) ? quick : null;
-            String st, info;
-            if (up) {
-                st = starting ? "Starting…" : "Running";
-                info = "";
-            } else if (back != null) {
-                st = "Turned off";
-                info = (Guest.otherHardware(this, Guest.IOS26, back.tag) ? "Boots with " + Guest.ramMiB(this, Guest.IOS26) / 1024
-                        + " GB next time" : "Boots next time") + ": about 3 min, then slow for about 15 min while iOS finishes starting.";
-            } else if (quick != null) {
-                // the last close, or an automatic save (AutoSave: settled after a boot, or before a crash)
-                st = "Ready";
-                info = "Continues from " + nice(quick.date) + ".";
-            } else {
-                // measured 2026-11-05 (APK-PLAN §6.20): every vCPU busy for ~13 min after a boot, idle after ~15
-                st = "Ready";
-                info = "Starts with a boot: about 3 min, then slow for about 15 min while iOS finishes starting.";
-            }
-            CrashReport.Record crash = up ? null : CrashReport.pendingFor(this, Guest.IOS26);
-            String text = (crashLine(crash) + error(Guest.IOS26, up) + info).trim();
-            String statusText = st + (twoX && !up ? "  ·  2x screen" : "");
-            Bitmap shot = shot(c);
-            runOnUiThread(() -> {
-                state(c, starting ? STARTING : up ? RUNNING : READY, statusText);
-                detail(c, text);
-                showBack(c, back);
-                showCrash(c, crash);
-                c.device.show(shot, true, up);
-            });
-        }, "home-refresh26").start();
-    }
-
-    /** watchOS's panel: only when its files are on the phone (WatchProfile.dir), in every build. */
-    private void refreshWatch() {
-        Panel c = pWatch;
-        boolean have = WatchProfile.available(this);
-        c.root.setVisibility(have ? View.VISIBLE : View.GONE);
-        if (!have) {
-            showCrash(c, null);
-            return;
-        }
-        boolean up = Guest.running() && Guest.os(this) == Guest.WATCH;
-        boolean starting = starting(Guest.WATCH);
-        state(c, starting ? STARTING : up ? RUNNING : READY, starting ? "Starting…" : up ? "Running" : "Ready");
-        buttons(c, up ? "Open" : "Start", up);
-        new Thread(() -> {
-            List<Guest.Snap> list = up || Guest.userDisk(this, Guest.WATCH).exists()
-                    ? Guest.snapshots(this, Guest.WATCH) : java.util.Collections.emptyList();
-            Guest.Snap quick = quickOf(list);
-            Guest.Snap back = !up && Guest.isWayBack(this, Guest.WATCH, quick) ? quick : null;
-            String st, info;
-            if (up) {
-                st = starting ? "Starting…" : "Running";
-                info = "";
-            } else if (back != null) {
-                st = "Turned off";
-                info = (Guest.otherHardware(this, Guest.WATCH, back.tag) ? "Boots with " + Guest.ramMiB(this, Guest.WATCH) / 1024
-                        + " GB next time" : "Boots next time") + ": 5 to 7 min to the watch face.";
-            } else if (quick != null) {
-                st = "Ready";
-                info = "Continues from " + nice(quick.date) + ".";
-            } else {
-                // measured 2026-11-07 (WATCHOS.md §2k): the face 5-7 minutes after a boot on our phone
-                st = "Ready";
-                info = "Starts with a boot: 5 to 7 min to the watch face.";
-            }
-            CrashReport.Record crash = up ? null : CrashReport.pendingFor(this, Guest.WATCH);
-            String text = (crashLine(crash) + error(Guest.WATCH, up) + info).trim();
-            Bitmap shot = shot(c);
-            runOnUiThread(() -> {
-                state(c, starting ? STARTING : up ? RUNNING : READY, st);
-                detail(c, text);
-                showBack(c, back);
-                showCrash(c, crash);
-                c.device.show(shot, true, up);
-            });
-        }, "home-refresh-watch").start();
-    }
-
     private void refresh16() {
         Panel c = p16;
         boolean up = Guest.running() && Guest.os(this) == Guest.IOS16;
         // the setup from Apple runs (its last step starts iOS once, in the background): the panel follows it
-        if (SetupService.busy() && !"a26".equals(SetupService.state.target)) {
+        if (SetupService.busy()) {
             state(c, STARTING, "Being installed");
             detail(c, SetupService.state.text);
             buttons(c, "Show", false);
@@ -1156,10 +912,10 @@ public class MainActivity extends Activity {
         state(c, starting ? STARTING : up ? RUNNING : READY, starting ? "Starting…" : up ? "Running" : "Ready");
         buttons(c, up ? "Open" : "Start", up);
         new Thread(() -> {
-            List<Guest.Snap> list = up || Guest.userDisk(this, Guest.IOS16).exists()
-                    ? Guest.snapshots(this, Guest.IOS16) : java.util.Collections.emptyList();
+            List<Guest.Snap> list = up || Guest.userDisk(this).exists()
+                    ? Guest.snapshots(this) : java.util.Collections.emptyList();
             Guest.Snap quick = quickOf(list);
-            Guest.Snap back = !up && Guest.isWayBack(this, Guest.IOS16, quick) ? quick : null;
+            Guest.Snap back = !up && Guest.isWayBack(this, quick) ? quick : null;
             String st, info;
             if (up) {
                 st = starting ? "Starting…" : "Running";
@@ -1350,11 +1106,9 @@ public class MainActivity extends Activity {
 
     /** What each system is doing, and the saves (those come from qemu-img or QEMU: off the UI thread). */
     private void refresh() {
-        refresh26();
-        refreshWatch();
         refresh16();
         if (Guest.turningOff()) {
-            Panel c = Guest.os(this) == Guest.WATCH ? pWatch : Guest.os(this) == Guest.IOS26 ? p26 : p16;
+            Panel c = p16;
             state(c, STARTING, "Turning off…");
         }
         showSettings();

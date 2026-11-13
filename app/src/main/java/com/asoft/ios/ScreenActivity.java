@@ -43,9 +43,8 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
     /** The pending crash record shown, and what it was read for (the os, its notice, the newest record's time). */
     private CrashReport.Record crash;
     private String crashFor;
-    /** watchOS: the picture sits in a drawn watch (WatchCase), whose crown and side button are the watch's. */
+    /** The picture sits on the guest's screen. */
     private boolean watchMode;
-    private WatchCase watchCase;
     private Object backCallback;
     /** ⏏ was pressed: leave once the saved guest has quit. */
     private boolean closing;
@@ -103,7 +102,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
             // wakes when the user is back (also when iOS slept first and the phone's timeout followed)
             readLeds();
             if (Guest.running() && !Guest.saving() && !closing) {
-                if (!displayOff && !Guest.aod26) {
+                if (!displayOff) {
                     sideButton();
                 }
                 lockedByPhone = true;
@@ -126,20 +125,8 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
         }       // Android 10: immersive()'s layout flags do the same
         view = new SurfaceView(this);
         view.getHolder().addCallback(this);
-        watchMode = Guest.os(this) == Guest.WATCH;
-        if (watchMode) {
-            watchCase = new WatchCase(this);
-            watchCase.addView(view);        // laid out at the watch's screen (render.c and guestPoint fit it exactly)
-            root.addView(watchCase, new FrameLayout.LayoutParams(-1, -1));
-            android.content.SharedPreferences p = getSharedPreferences("guest", MODE_PRIVATE);
-            if (!p.getBoolean("watch-tip", false)) {
-                p.edit().putBoolean("watch-tip", true).apply();
-                android.widget.Toast.makeText(this, "The Digital Crown is on the watch's right: drag it to turn, tap to press. "
-                        + "The volume keys turn it too.", android.widget.Toast.LENGTH_LONG).show();
-            }
-        } else {
-            root.addView(view);
-        }
+        watchMode = false;
+        root.addView(view, new FrameLayout.LayoutParams(-1, -1));
         cover = new TextView(this);
         cover.setText(screenOffText("Screen off", "tap to wake"));
         cover.setTextColor(Color.WHITE);
@@ -152,10 +139,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
                 wake();
             }
         });
-        if (watchMode) {
-            watchCase.addView(cover);       // the screen-off cover inside the watch's screen
-        } else {
-            root.addView(cover, new FrameLayout.LayoutParams(-1, -1));
+        root.addView(cover, new FrameLayout.LayoutParams(-1, -1));
         }
         status = new TextView(this);
         status.setTextColor(Color.WHITE);
@@ -251,21 +235,19 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
         guestBack();
     }
 
-    /** Wakes iOS's display: the side button on iOS 16, Home on iOS 26 (power would sleep it again). */
+    /** Wakes iOS's display: the side button on iOS 16 (power would sleep it again). */
     private void wake() {
-        Guest.button(Guest.ios26Running() ? "home" : "power");
+        Guest.button("power");
     }
 
-    /** The bar's Home (in AOD it wakes iOS, to its lock screen). */
+    /** The bar's Home. */
     private void home() {
-        Guest.aod26 = false;
         Guest.button("home");
     }
 
-    /** The bar's side button: iOS locks (AOD on an AOD disk, else display off) or wakes, from AOD too. */
+    /** The bar's side button: locks iOS (display off) or wakes. */
     private void power() {
-        if (displayOff || Guest.aod26) {
-            Guest.aod26 = false;
+        if (displayOff) {
             Guest.button("power");
         } else {
             sideButton();
@@ -273,14 +255,9 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
     }
 
     /**
-     * The side button with iOS's display on and not in AOD: on an AOD disk that takes iOS to its AOD, the only
-     * way there (iOS's Auto-Lock and lock screen timeout are Never on the AOD base), so the app knows it.
+     * The side button with iOS's display on: locks iOS (display off).
      */
     private void sideButton() {
-        if (Guest.ios26Running() && Guest.aodRunning) {
-            Guest.aod26 = true;
-            AppLog.note(this, "aod: in (the side button)");
-        }
         Guest.button("power");
     }
 
@@ -298,7 +275,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
         bar.addView(handle);
         barItems = new LinearLayout(this);
         barItems.setOrientation(LinearLayout.VERTICAL);
-        if (!watchMode) {       // the watch's crown and side button are drawn on the watch (WatchCase)
+        if (!watchMode) {
             barItems.addView(barButton(R.drawable.ic_bar_home, "Home", this::home));
             barItems.addView(barButton(R.drawable.ic_bar_power, "Side button: lock or wake iOS", this::power));
         }
@@ -524,7 +501,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
         box.setOrientation(LinearLayout.VERTICAL);
         box.setPadding(48, 16, 48, 0);
         TextView info = new TextView(this);
-        boolean big = Guest.os(this) == Guest.IOS26 && Guest.ramMiB(this, Guest.IOS26) > Guest.RAM_TIGHT;
+        boolean big = Guest.ramMiB(this) > Guest.RAM_TIGHT;
         info.setText(gb(free) + " free on the phone; a save takes about " + (big ? 5 : 3) + " GB.\n"
                 + (list.isEmpty() ? "No saves yet." : "Tap a save to load or delete it."));
         info.setPadding(0, 0, 0, 16);
@@ -535,9 +512,9 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
             row.setAllCaps(false);
             row.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
             int os = Guest.os(this);
-            boolean back = Guest.isQuick(snap.tag) && (wayBack || Guest.otherHardware(this, os, snap.tag));
+            boolean back = Guest.isQuick(snap.tag) && Guest.otherHardware(this, snap.tag);
             row.setText((back ? "Go back to the save of " + when(snap) : snap.label())
-                    + "\n" + snap.date + " · " + snap.size + " · " + Guest.hardware(this, os, snap.tag));
+                    + "\n" + snap.date + " · " + snap.size + " · " + Guest.hardware(this, snap.tag));
             row.setOnClickListener(v -> {
                 dialog[0].dismiss();
                 if (back) {
@@ -558,7 +535,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
             b.setPositiveButton("Save now", (d, w) -> askSaveName(list, free));
             b.setNeutralButton("Save and close", (d, w) -> saveAndClose());
             TextView off = new TextView(this);
-            off.setText("Turn off " + (Guest.watchRunning() ? "watchOS" : "iOS") + " without saving");
+            off.setText("Turn off iOS without saving");
             off.setTextSize(16);
             off.setTextColor(0xffff453a);
             off.setPadding(0, 40, 0, 24);
@@ -654,7 +631,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
                 .setTitle("Go back to the save of " + when(snap) + "?")
                 .setMessage(goBackText(this, os, snap))
                 .setPositiveButton("Go back", (d, w) -> {
-                    Guest.goBack(this, os, snap.tag);
+                    Guest.goBack(this, snap.tag);
                     status.setText("Going back to " + when(snap) + "…");
                     restart.setVisibility(View.GONE);
                     report.setVisibility(View.GONE);
@@ -666,27 +643,26 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
 
     /** The Go back dialog's text: what is undone, and the hardware the save opens with. */
     static String goBackText(android.content.Context c, int os, Guest.Snap snap) {
-        String hw = Guest.hardware(c, os, snap.tag);
-        return (os == Guest.WATCH ? "watchOS" : "iOS") + " goes back to how it was at " + when(snap)
+        String hw = Guest.hardware(c, snap.tag);
+        return "iOS goes back to how it was at " + when(snap)
                 + ": what you did after that (settings, apps, files) is undone.\n\n"
                 + snap.date + " · " + snap.size + " · opens with " + hw
-                + (Guest.otherHardware(c, os, snap.tag) ? " (its own; boots keep the setting, "
-                + Guest.ramMiB(c, os) / 1024 + " GB)" : "");
+                + (Guest.otherHardware(c, snap.tag) ? " (its own; boots keep the setting, "
+                + Guest.ramMiB(c) / 1024 + " GB)" : "");
     }
 
     /** What Turn off says, @quick the quick save (null: none), which stays as a way back. */
     static String turnOffText(int os, Guest.Snap quick) {
-        return (os == Guest.WATCH ? "watchOS shuts down as an Apple Watch does" : "iOS shuts down as an iPhone does")
+        return "iOS shuts down as an iPhone does"
                 + ": settings and apps stay, open apps close. The next start boots (a few minutes)."
                 + (quick == null ? "" : " The last save (" + when(quick) + ") stays as a way back until the next Save and close.")
                 + " Named saves stay."
-                + (os == Guest.IOS26 ? "\n\niOS 26 is slow for about 15 minutes after a boot (its own "
-                + "start-up work). Save and close keeps it as it is, past that." : "");
+                + "";
     }
 
     private void askTurnOff(Guest.Snap quick) {
         new android.app.AlertDialog.Builder(this)
-                .setTitle(Guest.watchRunning() ? "Turn off watchOS?" : "Turn off iOS?")
+                .setTitle("Turn off iOS?")
                 .setMessage(turnOffText(Guest.os(this), quick))
                 .setPositiveButton("Turn off", (d, w) -> {
                     if (!Guest.running() || Guest.saving() || closing) {
@@ -755,7 +731,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
         if (!now && up - thumbAt < 20_000) {
             return;
         }
-        if (fbPid == -1 || fbPid != Guest.pid(this) || !attached || displayOff || Guest.aod26 || Guest.saving() || closing
+        if (fbPid == -1 || fbPid != Guest.pid(this) || !attached || displayOff || Guest.saving() || closing
                 || view.getWidth() <= 0 || !view.getHolder().getSurface().isValid()) {
             return;
         }
@@ -814,7 +790,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
             wakeTries = 0;
             displayOff = displayWasOff = false;
             // a loaded state is past the boot's own display off; iOS 26's sleep is only ever a real one
-            coverArmed = Guest.resumed || Guest.ios26Running();
+            coverArmed = Guest.resumed;
             try {
                 if (leds != null) {
                     leds.close();
@@ -849,14 +825,13 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
             lockedByPhone = false;
             readLeds();
             // back from the phone's lock screen: wake iOS too (it locked with the phone: display off, or AOD)
-            if (Guest.running() && (displayOff || Guest.aod26)) {
-                Guest.aod26 = false;
+            if (Guest.running() && displayOff) {
                 wake();
             }
         }
         immersive();
         Choreographer.getInstance().postFrameCallback(this);
-        String log = Guest.ios26Running() ? Guest.overrides26().get("touchlog") : null;
+        String log = null;
         if ("1".equals(log) && touchLog == null) {
             try {
                 touchLog = new java.io.PrintWriter(new java.io.FileWriter(new java.io.File(Guest.runDir(this), "touch.txt"), true));
@@ -991,7 +966,6 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
                 }
             }
             if (displayOff) {
-                Guest.aod26 = false;        // the side button in AOD turns the display off
             }
         }
         if (Qmp.noSpace && Guest.running()) {
@@ -1172,13 +1146,6 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
             return true;
         }
         int action = e.getActionMasked();
-        if (action == MotionEvent.ACTION_DOWN && Guest.aod26 && Guest.ios26Running()) {
-            // iOS's touchscreen is off in its AOD: this touch only wakes it (Home), as an iPhone's tap does
-            Guest.aod26 = false;
-            swallowTouch = true;
-            Guest.button("home");
-            AppLog.note(this, "aod: a touch woke iOS (Home)");
-        }
         if (swallowTouch) {
             if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) {
                 swallowTouch = false;
@@ -1299,13 +1266,6 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
     public boolean onKeyDown(int code, KeyEvent e) {
         String volume = volumeKey(code);
         logKey(e);
-        if (volume != null && watchMode && watchCase != null) {
-            // the watch has no volume buttons: the phone's turn the crown, and keep turning while held (key repeats)
-            if (Guest.qmp() != null) {
-                watchCase.turn(volume.equals("volup") ? -WatchCase.CROWN_PER_NOTCH : WatchCase.CROWN_PER_NOTCH);
-            }
-            return true;
-        }
         if (volume != null && Guest.qmp() != null) {
             // down here, up in onKeyUp: holding is iOS's to see; repeats and the release must
             // not reach Android, or the phone's own volume moves too

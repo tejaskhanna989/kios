@@ -70,7 +70,7 @@ final class Installer {
 
     /** Something an import would delete: an installed iOS 16, or its iPhone's own disk and saves. */
     static boolean hasData(Context c) {
-        return installed(c) || Guest.userDisk(c, Guest.IOS16).exists();
+        return installed(c) || Guest.userDisk(c).exists();
     }
 
     /**
@@ -112,16 +112,10 @@ final class Installer {
             untar(in, part, total, p, m -> {
                 os[0] = bundleOs(m);
                 if ("16".equals(os[0])) {
-                    Guest.erase(c, Guest.IOS16);    // iOS 16's own iPhone only: never iOS 26's or the watch's
+                    Guest.erase(c);
                     deleteTree(dir(c));
-                } else if ("26".equals(os[0])) {
-                    for (String n : new String[] {"ios26-user.qcow2", "ios26-2x-user.qcow2"}) {
-                        retireUserDisk(c, n);
-                    }
-                    deleteTree(new File(c.getFilesDir(), "ios26"));
                 } else {
-                    retireUserDisk(c, "watch-user.qcow2");
-                    deleteTree(new File(c.getFilesDir(), "watchos"));
+                    throw new IOException("a bundle this app does not know: iOS 16 only");
                 }
             });
             if (os[0] == null) {
@@ -129,30 +123,9 @@ final class Installer {
             }
             p.at("Checking", 0, -1);
             File d;
-            if ("16".equals(os[0])) {
-                check(c, part);
-                Guest.select(c, Guest.IOS16);
-                d = dir(c);
-            } else {
-                String[] need = "26".equals(os[0]) ? Guest.PHONE_PARTS26 : WATCH_PARTS;
-                for (String n : need) {
-                    if (!new File(part, n).isFile()) {
-                        throw new IOException("not a whole " + ("26".equals(os[0]) ? "iOS 26" : "watchOS") + " bundle: no " + n);
-                    }
-                }
-                File disk = new File(part, "26".equals(os[0]) ? Guest.AOD26_BASE : WatchProfile.BASE);
-                byte[] head = new byte[4];
-                try (InputStream s = Files.newInputStream(disk.toPath())) {
-                    if (s.read(head) != 4 || head[0] != 'Q' || head[1] != 'F' || head[2] != 'I' || head[3] != (byte) 0xfb) {
-                        throw new IOException(disk.getName() + " is not a qcow2 image");
-                    }
-                }
-                // the phone's setup marks its own installs with install.json too (Guest.phoneMade26)
-                new File(part, "asoft-bundle.json").renameTo(new File(part, "install.json"));
-                Guest.select(c, "26".equals(os[0]) ? Guest.IOS26 : Guest.WATCH);
-                d = new File(c.getFilesDir(), "26".equals(os[0]) ? "ios26" : "watchos");
-                new File(c.getFilesDir(), Guest.DTREE26 + "-2x").delete();
-            }
+            check(c, part);
+            Guest.select(c, Guest.IOS16);
+            d = dir(c);
             if (!part.renameTo(d)) {
                 throw new IOException("cannot move " + part + " to " + d);
             }
@@ -163,16 +136,11 @@ final class Installer {
         }
     }
 
-    /** The watch's files in a watchOS bundle (WatchProfile.PARTS and the iOS 26 files it shares). */
-    static final String[] WATCH_PARTS = {WatchProfile.KERNEL, WatchProfile.DTREE, WatchProfile.TC, WatchProfile.BASE, "sptm", "txm", "rd-shell.hfs"};
-
-    /** The names a bundle may hold: iOS 16's, iOS 26's and the watch's; anything else in it is skipped. */
+    /** The names a bundle may hold: iOS 16's; anything else in it is skipped. */
     private static final java.util.Set<String> NAMES = new java.util.HashSet<>();
 
     static {
         NAMES.addAll(java.util.Arrays.asList(PARTS));
-        NAMES.addAll(java.util.Arrays.asList(Guest.PHONE_PARTS26));
-        NAMES.addAll(java.util.Arrays.asList(WATCH_PARTS));
     }
 
     /** A user disk rests on the disk an import replaces: kept as .old (as the PC keeps it), it cannot boot on the new one. */
@@ -186,13 +154,13 @@ final class Installer {
         }
     }
 
-    /** "16", "26" or "watchos" from a bundle's manifest; throws for one this app does not know. */
+    /** "16" from a bundle's manifest. */
     private static String bundleOs(File manifest) throws IOException {
         String text = new String(Files.readAllBytes(manifest.toPath()), StandardCharsets.UTF_8);
         try {
             org.json.JSONObject m = new org.json.JSONObject(text);
             String os = m.optString("ios");
-            if (m.optInt("format") != 1 || !("16".equals(os) || "26".equals(os) || "watchos".equals(os))) {
+            if (m.optInt("format") != 1 || !"16".equals(os)) {
                 throw new IOException("a bundle this app does not know: " + text.trim());
             }
             return os;
@@ -211,7 +179,7 @@ final class Installer {
      * then the folder becomes files/ios16. As install(), iOS 16's own iPhone (user disk, saves) goes first.
      */
     static void finish(Context c, File from) throws IOException {
-        Guest.erase(c, Guest.IOS16);
+        Guest.erase(c);
         Guest.select(c, Guest.IOS16);
         deleteTree(dir(c));
         File part = new File(c.getFilesDir(), "ios16.part");
@@ -464,46 +432,9 @@ final class Installer {
     static Removal removal(Context c, int os) {
         Removal r = new Removal();
         r.files.addAll(Guest.ownFiles(c, os));
-        if (os == Guest.IOS16) {
-            r.files.add(dir(c));
-            r.files.add(new File(c.getFilesDir(), "ios16.part"));
-            r.files.add(PhoneSetup.work(c));
-        } else {
-            boolean watch = os == Guest.WATCH;
-            File home = new File(c.getFilesDir(), watch ? "watchos" : "ios26");
-            // a watch run from the Termux runs' folder (WatchProfile.TEST_DIR, debug) may read SPTM, TXM and the ramdisk
-            // from iOS 26's: those stay for it
-            List<File> keep = new ArrayList<>();
-            if (!watch && WatchProfile.available(c)) {
-                for (String n : WatchProfile.SHARED) {
-                    File f = WatchProfile.part(c, n);
-                    if (home.equals(f.getParentFile())) {
-                        keep.add(f);
-                    }
-                }
-            }
-            File[] kids = home.listFiles();
-            if (keep.isEmpty() || kids == null) {
-                r.files.add(home);
-            } else {
-                for (File k : kids) {
-                    if (!keep.contains(k)) {
-                        r.files.add(k);
-                    }
-                }
-            }
-            if (!watch) {
-                r.files.add(Screen26.jobDir(c));
-            }
-            String other = watch ? PhoneSetup26.IOS26 : PhoneSetup26.WATCH;
-            boolean otherStays = (watch ? Guest.available26(c) : WatchProfile.available(c)) || PhoneSetup26.pending(c, other);
-            if (otherStays) {
-                r.files.addAll(PhoneSetup26.own(c, watch ? PhoneSetup26.WATCH : PhoneSetup26.IOS26));
-            } else {
-                r.shared = PhoneSetup26.work(c).isDirectory();
-                r.files.add(PhoneSetup26.work(c));
-            }
-        }
+        r.files.add(dir(c));
+        r.files.add(new File(c.getFilesDir(), "ios16.part"));
+        r.files.add(PhoneSetup.work(c));
         r.bytes = freedBytes(r.files);
         return r;
     }
@@ -616,12 +547,9 @@ final class Installer {
         Guest.forgetSystem(c, os);
         // its crash notice goes (a new install is not the system that crashed); the records stay in files/run
         CrashReport.startedAgain(c, os);
-        if (os != Guest.IOS16) {
-            PhoneSetup26.dropWant(c, os == Guest.WATCH ? PhoneSetup26.WATCH : PhoneSetup26.IOS26);
-        }
-        SetupService.forget(c, os == Guest.IOS16 ? "ios16" : "a26");
-        AppLog.note(c, String.format(java.util.Locale.ROOT, "remove %s%s: %.2f GB (%d bytes) given back%s; %.1f GB free before,"
-                + " %.1f after; removed: %s", Guest.osName(os), r.shared ? " with the setup's shared part" : "", r.bytes / 1e9, r.bytes,
+        SetupService.forget(c, "ios16");
+        AppLog.note(c, String.format(java.util.Locale.ROOT, "remove %s: %.2f GB (%d bytes) given back%s; %.1f GB free before,"
+                + " %.1f after; removed: %s", Guest.osName(os), r.bytes / 1e9, r.bytes,
                 left > 0 ? ", " + left + " paths could not be deleted" : "", free / 1e9, c.getFilesDir().getUsableSpace() / 1e9, what));
         return r.bytes;
     }

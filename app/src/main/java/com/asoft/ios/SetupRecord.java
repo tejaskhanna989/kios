@@ -31,32 +31,23 @@ final class SetupRecord {
         return step.isEmpty() ? "its start" : step;
     }
 
-    /** "iOS 26", "watchOS", "iOS 26 / watchOS (shared part)": whose step @step ("ios26:rootfs") is. */
+    /** "iOS 16": whose step @step is. */
     private static String system26(String step) {
-        String g = step.contains(":") ? step.substring(0, step.indexOf(':')) : "";
-        return PhoneSetup26.IOS26.equals(g) ? "iOS 26" : PhoneSetup26.WATCH.equals(g) ? "watchOS" : "iOS 26 / watchOS (shared part)";
+        return "iOS 16";
     }
 
     private static int os26(String step) {
-        return step.startsWith(PhoneSetup26.WATCH + ":") ? Guest.WATCH : Guest.IOS26;
+        return Guest.IOS16;
     }
 
-    /** What the screen calls step @step of PhoneSetup26 ("ios26:rootfs"). */
+    /** What the screen calls step @step ("ipsw", "disk", ...). */
     private static String label26(String step) {
-        int k = step.indexOf(':');
-        if (k > 0) {
-            for (String[] s : PhoneSetup26.steps(step.substring(0, k))) {
-                if (s[0].equals(step.substring(k + 1))) {
-                    return s[1];
-                }
-            }
-        }
         return step.isEmpty() ? "its start" : step;
     }
 
     /** The step's name for the screens: "Build the iOS disk". */
     static String label(boolean a26, String step) {
-        return a26 ? label26(step) : label16(step);
+        return label16(step);
     }
 
     /** The steps that boot iOS or watchOS itself (Guest.startSetup, Guest.start): their QEMU's logs are the run folder's. */
@@ -105,14 +96,13 @@ final class SetupRecord {
         h.put("engine", Guest.nativeMissing().isEmpty()
                 ? "native EL0 possible" + (Helper.useNative(c) ? "" : " (turned off)") : "TCG only (the CPU lacks " + Guest.nativeMissing() + ")");
         h.put("helper RAM", String.format(Locale.ROOT, "%d MiB for this phone's %s jobs (the phone has %.1f GB)",
-                Helper.ramMiB(c, a26 ? Helper.FLOOR_WORK_IN_RAM : Helper.FLOOR_IOS16), a26 ? "iOS 26 / watchOS" : "iOS 16",
-                Helper.phoneRam(c) / 1e9));
+                Helper.ramMiB(c, false), "iOS 16", Helper.phoneRam(c) / 1e9));
         h.put("app", CrashReport.appVersion(c));
         h.put("phone", CrashReport.phone());
         h.put("memory", CrashReport.memInfo() + "; " + CrashReport.memory(c));
         h.put("free space", CrashReport.freeSpace(c));
         h.put("thermal", CrashReport.thermal(c));
-        h.put("power", PhoneSetup26.charging(c) ? "charging" : "on battery" + (PhoneSetup26.lowBattery(c) ? ", low" : ""));
+        h.put("power", "on battery");
         h.put("setup ran", CrashReport.duration(now - runSince) + " (this step " + CrashReport.duration(now - stepSince) + ")");
 
         LinkedHashMap<String, List<String>> s = new LinkedHashMap<>();

@@ -185,10 +185,6 @@ public class GuestService extends Service {
                     Guest.waitEnded(30_000);
                     Guest.start(this, null);
                 }
-                if (Guest.ios26Running() && Guest.running()) {
-                    AutoSave.start(this, Guest.pid(this), Guest.resumed);
-                    HintBoost.start(this, Guest.pid(this));
-                }
             } catch (IOException e) {
                 note("start failed: " + e);
                 if (!Guest.running()) {

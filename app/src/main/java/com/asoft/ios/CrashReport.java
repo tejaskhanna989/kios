@@ -682,7 +682,7 @@ final class CrashReport {
 
     /** The pending notices of every system in one string, for a screen to see that one came or went. */
     static String pendingKey(Context c) {
-        return pendingId(c, Guest.IOS26) + " " + pendingId(c, Guest.WATCH) + " " + pendingId(c, Guest.IOS16);
+        return pendingId(c, Guest.IOS16);
     }
 
     /** @os's newest record while its notice stands (until @os is started again), else null. */

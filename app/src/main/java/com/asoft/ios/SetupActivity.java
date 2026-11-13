@@ -33,8 +33,6 @@ public class SetupActivity extends Activity {
     private ProgressBar bar;
     private volatile boolean busy;
     private SetupScreen fromApple;
-    private Setup26Screen from26;
-    private View section26;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -49,31 +47,7 @@ public class SetupActivity extends Activity {
         scroll.addView(box);
         setContentView(scroll);
         show();
-        // the home screen's "Set up iOS 26 or watchOS": open at that part, not at iOS 16's. The parts above it
-        // fill in after the first layout (iOS 16's list of Apple's files), so it follows that part's place
-        // for 3 s, until the first touch
-        if (state == null && getIntent().getBooleanExtra(EXTRA_IOS26, false)) {
-            long until = android.os.SystemClock.uptimeMillis() + 3000;
-            boolean[] touched = {false};
-            scroll.setOnTouchListener((v, e) -> {
-                touched[0] = true;
-                return false;
-            });
-            scroll.getViewTreeObserver().addOnGlobalLayoutListener(new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
-                @Override
-                public void onGlobalLayout() {
-                    if (touched[0] || android.os.SystemClock.uptimeMillis() > until) {
-                        scroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                        return;
-                    }
-                    scroll.scrollTo(0, Math.max(0, section26.getTop() - 24));
-                }
-            });
-        }
     }
-
-    /** Intent extra: open at iOS 26 and watchOS from Apple. */
-    static final String EXTRA_IOS26 = "ios26";
 
     @Override
     protected void onResume() {
@@ -148,12 +122,6 @@ public class SetupActivity extends Activity {
             fromApple = new SetupScreen(this);
         }
         box.addView(fromApple.view());
-        // iOS 26 and watchOS from Apple, behind the GPU check (Setup26Screen)
-        if (from26 == null) {
-            from26 = new Setup26Screen(this);
-        }
-        section26 = from26.view();      // (view() takes it out of its old parent: call it only here)
-        box.addView(section26);
         TextView pc = text("Or bring it from your PC", 18, Color.WHITE);
         pc.setPadding(0, 56, 0, 28);
         text("1. Install ASoftware iOS (iOS 16) on a Windows PC.\n"
@@ -214,12 +182,11 @@ public class SetupActivity extends Activity {
             return;
         }
         String n = done == null ? "" : done.getName();
-        boolean other = n.contains("iOS26") || n.contains("watchOS");
-        if (Installer.hasData(this) || other) {
+        if (Installer.hasData(this)) {
             new android.app.AlertDialog.Builder(this)
-                    .setTitle(n.contains("iOS26") ? "Bring in iOS 26?" : n.contains("watchOS") ? "Bring in watchOS?" : "Replace iOS on this phone?")
-                    .setMessage("What the file replaces goes first: that system's disk with its settings, apps and saves (a user "
-                            + "disk of iOS 26 or the watch is kept as .old). Then the new one is copied in.")
+                    .setTitle("Replace iOS on this phone?")
+                    .setMessage("What the file replaces goes first: iOS 16's disk with its settings, apps and saves. "
+                            + "Then the new one is copied in.")
                     .setPositiveButton("Replace", (d, w) -> importNow(in, total, done))
                     .setNegativeButton("Cancel", (d, w) -> {
                         try {

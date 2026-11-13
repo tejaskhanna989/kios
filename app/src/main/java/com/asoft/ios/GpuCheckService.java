@@ -40,20 +40,7 @@ public class GpuCheckService extends Service {
             // GpuCheck then waits for the log's result line alone
         }
         try {
-            String loader;
-            if ("turnip".equals(which)) {
-                File links = Emu.linkLibraries(this);
-                File icd = Guest.writeVulkanIcd(this, links);
-                // before the loader is loaded: it reads them when the instance is made
-                Os.setenv("VK_DRIVER_FILES", icd.getPath(), true);
-                Os.setenv("VK_ICD_FILENAMES", icd.getPath(), true);
-                loader = new File(links, "libvulkan.so").getPath();
-                if (!new File(loader).exists()) {
-                    throw new IOException("this build has no Vulkan loader (" + loader + ")");
-                }
-            } else {
-                loader = "libvulkan.so";
-            }
+            String loader = "libvulkan.so";
             System.loadLibrary("gpucheck");
             rc = GpuCheck.probe(loader, log.getPath());
         } catch (IOException | android.system.ErrnoException | UnsatisfiedLinkError e) {

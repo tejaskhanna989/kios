@@ -265,12 +265,6 @@ final class Qmp {
         consumer("press", button);
     }
 
-    /** watchOS: turns QEMU's usb-crown by @units (positive: a list moves on down, as the PC's wheel down). */
-    void crown(int units) {
-        send("{\"execute\":\"qom-set\",\"arguments\":{\"path\":\"/machine/peripheral/ucrown\",\"property\":\"rotate\","
-                + "\"value\":" + units + "}}");
-    }
-
     /** One edge of a key, for a button the user holds. */
     void keyEvent(String qcode, boolean down) {
         send("{\"execute\":\"input-send-event\",\"arguments\":{\"events\":[{\"type\":\"key\",\"data\":{\"down\":"
