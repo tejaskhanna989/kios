@@ -164,12 +164,7 @@ public class GuestService extends Service {
                     note("start: the iOS before is still closing after 30 s");
                 }
                 Guest.startError = null;
-                // iOS 26's one-time disk step for the 2x screen, off Guest's lock (the screens go on drawing)
-                String tag = Guest.prepare(this, loadTag);
-                if (!load && Guest.running() && !Guest.saving()) {
-                    return;     // a second request waited for that step behind the first, which has started iOS
-                }
-                Guest.start(this, tag);
+                Guest.start(this, loadTag);
                 MemoryCleaner.start(this);
                 if (Guest.resumed && !resumedOk()) {
                     boolean forGood = Guest.loadFailedForGood(this);

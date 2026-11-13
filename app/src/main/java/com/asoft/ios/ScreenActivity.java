@@ -478,7 +478,7 @@ public class ScreenActivity extends Activity implements SurfaceHolder.Callback, 
         }
         new Thread(() -> {
             java.util.List<Guest.Snap> list = Guest.snapshots(this);
-            boolean wayBack = Guest.quickStale(this, Guest.os(this));
+            boolean wayBack = Guest.quickStale(this);
             long free = getFilesDir().getUsableSpace();
             runOnUiThread(() -> {
                 if (!isFinishing()) {

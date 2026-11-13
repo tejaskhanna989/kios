@@ -96,7 +96,7 @@ final class SetupRecord {
         h.put("engine", Guest.nativeMissing().isEmpty()
                 ? "native EL0 possible" + (Helper.useNative(c) ? "" : " (turned off)") : "TCG only (the CPU lacks " + Guest.nativeMissing() + ")");
         h.put("helper RAM", String.format(Locale.ROOT, "%d MiB for this phone's %s jobs (the phone has %.1f GB)",
-                Helper.ramMiB(c, false), "iOS 16", Helper.phoneRam(c) / 1e9));
+                Helper.ramMiB(c, Helper.FLOOR_IOS12), "iOS 12", Helper.phoneRam(c) / 1e9));
         h.put("app", CrashReport.appVersion(c));
         h.put("phone", CrashReport.phone());
         h.put("memory", CrashReport.memInfo() + "; " + CrashReport.memory(c));

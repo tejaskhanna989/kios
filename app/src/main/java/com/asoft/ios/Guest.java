@@ -34,6 +34,8 @@ final class Guest {
     /** iOS 12 kernel load address (XNU for arm64). */
     static final long KERNEL_PA_12 = 0x10000000L;
     static final long STUB_PA_12 = 0x10200000L;
+    /** Above this Android has so little left that it may close the guest. */
+    static final int RAM_TIGHT = 4096;
 
     /** What the screens call @os. */
     static String osName(int os) {
