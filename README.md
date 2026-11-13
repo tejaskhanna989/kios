@@ -1,10 +1,9 @@
-# Kios - iOS 16 for Android
+# Kios - iOS 12 for Android
 
-iOS 16 in an Android app, on a stock phone: no root, locked bootloader, no Termux. iOS 16 can be
-installed on the phone itself from Apple's servers or brought from a PC. The companion of
-[Kios for Windows](https://github.com/alpersamur3/asoft-ios).
+iOS 12 in an Android app, on a stock phone: no root, locked bootloader, no Termux. iOS 12 can be
+installed on the phone itself from Apple's servers. The companion of [Kios for Windows](https://github.com/alpersamur3/asoft-ios).
 
-Research preview. Tested on a Galaxy S25 Ultra (Snapdragon 8 Elite, 12 GB RAM); iOS 16 also on a
+Research preview. Tested on a Galaxy S25 Ultra (Snapdragon 8 Elite, 12 GB RAM); iOS 12 also on a
 Galaxy A71 and a Galaxy M31 (much slower: their CPUs cannot run iOS's code natively, see below).
 
 ## Which phones
@@ -13,15 +12,13 @@ Nothing in it is specific to the S25 Ultra; it is the phone it is developed and 
 
 | | Needs | Recommended |
 |---|---|---|
-| iOS 16 | 64-bit Android 10 or later, 6 GB RAM | ARMv8.2-A or later (iOS's code runs natively), 8 GB RAM or more |
-| Room | iOS 16 about 12 GB; more while installing from Apple (below) | |
+| iOS 12 | 64-bit Android 10 or later, 4 GB RAM | ARMv8.2-A or later (iOS's code runs natively), 6 GB RAM or more |
+| Room | iOS 12 about 6 GB; more while installing from Apple (below) | |
 
 - Without the ARMv8.2 features below, iOS still runs, all of it emulated, several times slower.
 - Speed is mostly the CPU's big cores: an older or smaller core is slower whatever its ARM version.
-- RAM: iOS 16 reached its lock screen on a 6 GB phone (Galaxy M31) with about 0.2 GB left to Android;
-  with less to spare, Android may close it. iOS 16's memory is set in its menu on the home screen
-  (the three dots): on the S25 Ultra iOS 16 left Android about 1.5 GB, where the app warns that
-  Android may close it. Less RAM is a warning, not a stop.
+- RAM: iOS 12 reached its lock screen on a 4 GB phone with about 1 GB left to Android; with less
+  to spare, Android may close it. iOS 12's memory is fixed at 2 GiB for the guest.
 - Free memory for iOS (home screen, Settings): while iOS runs, the background processes of other
   apps are ended every 90 s, so Android does not close iOS for lack of memory. Android 14 and later
   let an app end only its own, so there the app asks adb's shell on the phone itself (`am kill-all`)
@@ -31,7 +28,7 @@ Nothing in it is specific to the S25 Ultra; it is the phone it is developed and 
 
 ## What works
 
-- iOS 16.7 (20H392) full screen, touch, iOS's own keyboard, Safari with HTTPS pages.
+- iOS 12 full screen, touch, iOS's own keyboard, Safari with HTTPS pages.
 - Side bar (right edge): tap its handle to show or hide the buttons, drag it to move the bar up or
   down; it stays where you leave it. Home, the side button, a touch lock (touches stop reaching iOS),
   pin (Android's screen pinning: the phone's edge swipes no longer pull down the notification shade
@@ -39,24 +36,31 @@ Nothing in it is specific to the S25 Ultra; it is the phone it is developed and 
 - The phone's volume keys are iOS's (held, they repeat). Android's back gesture is iOS's edge swipe.
   Turning the phone's screen off locks iOS too.
 - Quick boot: swiping the app away, or Save and close, keeps iOS as it is; it comes back in about
-  10 s instead of a boot of a few minutes. Named saves (about 3 GB each) can be taken and loaded.
+  10 s instead of a boot of a few minutes. Named saves can be taken and loaded.
 - Turn off (in 💾, or the notification) shuts iOS down without a save; the next start boots. The
   last quick save stays as a way back: Go back, on the home screen or in 💾, returns to it with the
   memory it was saved with, until the next Save and close replaces it.
 - Settings and apps you add stay on the phone's own copy of the disk.
 
-Not working: App Store and Apple ID, audio, GPU acceleration on iOS 16 (it draws on the CPU).
+Not working: App Store and Apple ID, audio, GPU acceleration (it draws on the CPU).
 
-### iOS 26 (preview)
+## Setting it up from Apple (no PC)
 
-iOS 26.6.2 in Apple's research VM (vphone600), drawing on the phone's GPU: Metal is translated to
-Vulkan (reims-vgpu, metal2vulkan) on Mesa's Turnip driver for Adreno. Snapdragon 8 Elite (Adreno 830)
-only so far. Home screen, apps, touch, keyboard, Liquid Glass; quick boot and saves as for iOS 16, and
-an automatic save before Android could run out of memory. It is slow for about 15 minutes after a
-boot. Set up installs it from Apple (below). The screen is 2x by default (faster); 3x (sharp) is in
-iOS 26's menu on the home screen. On a disk set up with Always On Display, the side button takes iOS
-to it and a touch there wakes it; iOS's own Auto-Lock is set to Never there, because the app cannot
-see iOS go to its Always On Display by itself.
+Set up builds iOS 12 on the phone itself from Apple's files: no PC, no adb.
+
+- It downloads only the parts of Apple's iOS 12 IPSW the disk is made of, straight from Apple's
+  servers: several connections, pieces written in place, each part checked against the IPSW's own
+  CRC-32. It picks the fastest of Apple's servers, goes on after an app kill, a restart or a lost
+  network, can wait for Wi-Fi, and has Pause and Cancel on its notification.
+- Then a helper VM runs in the app's QEMU: it makes the kernel with the iPhone's device tree and
+  builds the iOS disk from the downloaded images. The disk is packed and set up like one brought
+  from a PC, then iOS is started once until its lock screen and saved, so your first start takes
+  seconds.
+- It needs about 12 GB free at its height (with less, the downloaded files go as soon as the disk
+  no longer needs them) and leaves about 6 GB: the disk and iOS's own data with its save. Keep the
+  phone on its charger.
+
+The app and this repository hold no Apple file: what is built comes from Apple's servers on the phone.
 
 ### watchOS (preview)
 

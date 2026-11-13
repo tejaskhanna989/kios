@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Locale;
 
 /**
- * Installs iOS 16 from Apple in the foreground (PhoneSetup), with a notification that says how far it
+ * Installs iOS 12 from Apple in the foreground (PhoneSetup), with a notification that says how far it
  * is and Pause / Cancel on it. Its state is static, as Guest's is: the setup screen reads it twice a
  * second. Pause keeps everything done so far: the download stops at once (finished chunks stay), a
  * helper VM step finishes first (it cannot be resumed half way). Cancel deletes what was made.
@@ -38,7 +38,7 @@ public class SetupService extends Service {
         volatile String error;                  // why it stopped, in plain words; null while it runs or when done
         volatile String record;                 // the record of that stop (SetupRecord), for the screens' Share log; null without one
         volatile boolean running, paused, waitingForWifi, waitingForNetwork, finished, held;
-        volatile String target = "ios16";       // "ios16" (PhoneSetup) or "a26" (PhoneSetup26: iOS 26 and/or watchOS)
+        volatile String target = "ios12";       // "ios12" (PhoneSetup)
         volatile List<IpswFetch.Item> items = new ArrayList<>();
         volatile long received;
         volatile int connections;
@@ -63,11 +63,11 @@ public class SetupService extends Service {
     }
 
     static void start(Context c) {
-        c.startForegroundService(new Intent(c, SetupService.class).setAction("start").putExtra("what", "ios16"));
+        c.startForegroundService(new Intent(c, SetupService.class).setAction("start").putExtra("what", "ios12"));
     }
 
     private static String title(boolean done) {
-        return done ? "iOS 16 is set up" : "Installing iOS 16";
+        return done ? "iOS 12 is set up" : "Installing iOS 12";
     }
 
     /** The step can pause: a download, a decrypt (both go on where they were), a helper VM job (held). */
@@ -90,7 +90,7 @@ public class SetupService extends Service {
     }
 
     /**
-     * A system that a finished run of @target ("ios16" or "a26") set up was removed (Installer.remove): the setup
+     * A system that a finished run of @target ("ios12") set up was removed (Installer.remove): the setup
      * screens stop saying it is set up, and so does the notification the run left.
      */
     static void forget(Context c, String target) {
@@ -230,9 +230,9 @@ public class SetupService extends Service {
     /** When the step that runs now started: its failed helper runs since then go into its record (SetupRecord). */
     private volatile long stepSince;
 
-    /** "the iOS 16 setup", "the iOS 26 and watchOS setup": what runs, for the app's own end (AppExit). */
+    /** "the iOS 12 setup": what runs, for the app's own end (AppExit). */
     private String setupName(boolean a26) {
-        return "the iOS 16 setup";
+        return "the iOS 12 setup";
     }
 
     private void begin() {
@@ -336,7 +336,7 @@ public class SetupService extends Service {
                 AppExit.end(this, AppExit.SETUP);
                 worker = null;
                 if (state.finished) {
-                    post("iOS 16 is set up: open ASoftware iOS and tap Start iOS 16", 100);
+                    post("iOS 12 is set up: open Kios and tap Start iOS 12", 100);
                     stopForeground(STOP_FOREGROUND_DETACH);
                 } else if (state.error != null) {
                     post("Stopped: " + state.error, -1);

@@ -31,13 +31,13 @@ import java.util.regex.Pattern;
  * <pre>
  * &lt;!-- app-notice
  * level: critical
- * text: Adreno 740 and 750 GPUs can now run iOS 26 and watchOS.
+ * text: iOS 12 runs on more phones now.
  * --&gt;
  * </pre>
  * level is critical (red), important (amber) or normal; text may span several text: lines.
  */
 final class UpdateCheck {
-    static final String RELEASE_PAGE = "https://github.com/alpersamur3/asoft-ios-android/releases/latest";
+    static final String RELEASE_PAGE = "https://github.com/tejaskhanna989/kios/releases/latest";
     // the list, not /releases/latest: the notice's color is the highest level among every release
     // this app has not got yet, so someone two releases behind still sees a critical one in between
     private static final String API = "https://api.github.com/repos/alpersamur3/asoft-ios-android/releases?per_page=10";

@@ -23,8 +23,8 @@ import java.io.IOException;
 import java.io.InputStream;
 
 /**
- * Set up: bring iOS 16 in from the PC (pc/Send-ToPhone.cmd makes ASoftware-iOS16.asoft and,
- * with the phone on USB, pushes it to this app's import folder), or from a file picked here.
+ * Set up: bring iOS 12 in from Apple (the app downloads the IPSW from Apple's servers and builds
+ * the disk on this phone), or from a file picked here.
  */
 public class SetupActivity extends Activity {
     private static final int PICK = 1;
@@ -114,35 +114,15 @@ public class SetupActivity extends Activity {
         nlp.bottomMargin = 28;
         box.addView(n, nlp);
         if (Installer.installed(this)) {
-            text("iOS 16 is set up on this phone. Importing or installing again replaces it: this iPhone's settings, apps and saves go.",
+            text("iOS 12 is set up on this phone. Importing or installing again replaces it: this iPhone's settings, apps and saves go.",
                     15, 0xffbbbbbb);
         }
-        // no PC: Apple's files, the PC installer's helper VM (PhoneSetup)
+        // Apple's files, the phone's own setup (PhoneSetup) downloads iOS 12 from Apple and builds its disk on the phone
         if (fromApple == null) {
             fromApple = new SetupScreen(this);
         }
         box.addView(fromApple.view());
-        TextView pc = text("Or bring it from your PC", 18, Color.WHITE);
-        pc.setPadding(0, 56, 0, 28);
-        text("1. Install ASoftware iOS (iOS 16) on a Windows PC.\n"
-                + "2. On the PC, run Send-ToPhone.cmd from the ASoftware iOS folder. It packs that iOS into ASoftware-iOS16.asoft (about 6.5 GB).\n"
-                + "3. With this phone on USB and USB debugging on, it sends the file here by itself. "
-                + "Otherwise copy the file to the phone (for example to Download) and choose it below.",
-                15, 0xffbbbbbb);
-        for (File f : Installer.waiting(this)) {
-            button(String.format("Import %s (%.1f GB)", f.getName(), f.length() / 1e9), v -> {
-                try {
-                    run(new FileInputStream(f), f.length(), f);
-                } catch (IOException e) {
-                    status.setText(e.getMessage());
-                }
-            });
-        }
-        button("Choose file…", v -> {
-            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*");
-            startActivityForResult(i, PICK);
-        });
-        text(String.format("%.1f GB free on this phone; iOS needs about 6.5 GB, and 4 GB more for a save.",
+        text(String.format("%.1f GB free on this phone; iOS 12 needs about 5 GB, and 2 GB more for a save.",
                 getFilesDir().getUsableSpace() / 1e9), 13, 0xff888888).setPadding(0, 28, 0, 28);
         bar = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         bar.setMax(1000);
@@ -172,7 +152,7 @@ public class SetupActivity extends Activity {
         }
     }
 
-    /** Asks first when it replaces something, then imports in the background; @done is the pushed file to delete after. */
+    /** Asks first when it replaces something, then downloads in the background. */
     private void run(InputStream in, long total, File done) {
         if (busy) {
             return;
@@ -181,11 +161,10 @@ public class SetupActivity extends Activity {
             status.setText("Close iOS first (side bar > Saves > Save and close).");
             return;
         }
-        String n = done == null ? "" : done.getName();
         if (Installer.hasData(this)) {
             new android.app.AlertDialog.Builder(this)
-                    .setTitle("Replace iOS on this phone?")
-                    .setMessage("What the file replaces goes first: iOS 16's disk with its settings, apps and saves. "
+                    .setTitle("Replace iOS 12 on this phone?")
+                    .setMessage("What the file replaces goes first: iOS 12's disk with its settings, apps and saves. "
                             + "Then the new one is copied in.")
                     .setPositiveButton("Replace", (d, w) -> importNow(in, total, done))
                     .setNegativeButton("Cancel", (d, w) -> {
@@ -228,8 +207,8 @@ public class SetupActivity extends Activity {
                 if (done != null) {
                     done.delete();
                 }
-                String notes = "16".equals(os) ? Installer.kernelNotes(this) : "";
-                result = String.format("%s is set up (%d s).%s", "16".equals(os) ? "iOS 16" : "26".equals(os) ? "iOS 26" : "watchOS",
+                String notes = "12".equals(os) ? Installer.kernelNotes(this) : "";
+                result = String.format("%s is set up (%d s).%s", "12".equals(os) ? "iOS 12" : os,
                         (System.currentTimeMillis() - t0) / 1000, notes.isEmpty() ? "" : "\n" + notes);
             } catch (IOException | RuntimeException e) {
                 result = "Not set up: " + e.getMessage();
@@ -274,9 +253,9 @@ public class SetupActivity extends Activity {
             });
             box.addView(row);
         }
-        if (Installer.installed(this) && result.startsWith("iOS 16 is set up")) {
-            Guest.select(this, Guest.IOS16);
-            button("Start iOS 16 (the first start takes a few minutes)", v -> {
+        if (Installer.installed(this) && result.startsWith("iOS 12 is set up")) {
+            Guest.select(this, Guest.IOS12);
+            button("Start iOS 12 (the first start takes a few minutes)", v -> {
                 startActivity(new Intent(this, ScreenActivity.class));
                 finish();
             });

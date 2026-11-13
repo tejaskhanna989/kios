@@ -132,7 +132,7 @@ final class Helper {
      * RAM (build-root works on its scratch disk, payload's /work holds the kernel and payload.bin, ~200 MB):
      * 1.5 GiB. Read from the scripts (2026-11-12), not measured below 4 GiB.
      */
-    static final int FLOOR_WORK_IN_RAM = 2048, FLOOR_IOS16 = 1536;
+    static final int FLOOR_WORK_IN_RAM = 2048, FLOOR_IOS16 = 1536, FLOOR_IOS12 = 1024;
     /** The sizes, largest first: a retry after Android's memory killer steps down one (smaller()). */
     private static final int[] SIZES = {4096, 3072, 2048, 1536};
 

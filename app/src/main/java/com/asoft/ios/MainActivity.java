@@ -27,10 +27,10 @@ import java.nio.file.Files;
 import java.util.List;
 
 /**
- * The home screen: the devices on this phone. Each system (iOS 26, iOS 16, watchOS) is its device, drawn with
- * what its screen last showed (DeviceView), its state in a line, and the one thing to do next as its button;
- * what is rarely needed (a boot without the save, its screen and memory, erasing or removing it) is behind its "more"
- * corner. Under the devices the few settings of the app itself, and the engine test for comparing phones.
+ * The home screen: iOS 12 on this phone, drawn with what its screen last showed (DeviceView), its state
+ * in a line, and the one thing to do next as its button; what is rarely needed (a boot without the save,
+ * its screen and memory, erasing or removing it) is behind its "more" corner. Under the device the few
+ * settings of the app itself, and the engine test for comparing phones.
  */
 public class MainActivity extends Activity {
     /** The crash notification's extra (CrashReport): the record's id, whose report this screen opens. */
@@ -58,7 +58,7 @@ public class MainActivity extends Activity {
     }
 
     private LinearLayout box;
-    private final Panel p16 = new Panel(Guest.IOS16);
+    private final Panel p12 = new Panel(Guest.IOS12);
     private TextView powerWarn, freeRamValue, wadbValue, updateValue, logsValue, footer, engineLog;
     private LinearLayout updateBar, advanced;
     private TextView updateText, updateNote, updateGet, updateDismiss;
@@ -351,7 +351,7 @@ public class MainActivity extends Activity {
         brand.addView(logo, new LinearLayout.LayoutParams(dp(52), dp(52)));
         LinearLayout names = new LinearLayout(this);
         names.setOrientation(LinearLayout.VERTICAL);
-        TextView title = text(names, "ASoftware", 25, TEXT);
+        TextView title = text(names, "Kios", 25, TEXT);
         title.setTypeface(Typeface.create("sans-serif", Typeface.BOLD));
         title.setLetterSpacing(-0.01f);
         text(names, "iPhone and Apple Watch software, on this phone", 13, DIM);
@@ -374,7 +374,7 @@ public class MainActivity extends Activity {
         box.addView(powerWarn, wlp);
         powerWarn.setVisibility(View.GONE);
 
-        box.addView(buildPanel(p16, "iOS 16", DeviceView.HOME, new int[] {0xff5ad1c8, 0xff2f8fe0, 0xff3a56c9}));
+        box.addView(buildPanel(p12, "iOS 12", DeviceView.HOME, new int[] {0xff5ad1c8, 0xff2f8fe0, 0xff3a56c9}));
 
         heading(box, "Settings");
         LinearLayout settings = group(box, 0);
@@ -395,7 +395,7 @@ public class MainActivity extends Activity {
         advanced.setVisibility(View.GONE);
         advanced.setPadding(dp(4), dp(12), dp(4), 0);
         box.addView(advanced);
-        text(advanced, "Runs iOS-style code on this phone's CPU the way iOS 16 does here, and reports its speed: "
+        text(advanced, "Runs iOS-style code on this phone's CPU the way iOS 12 does here, and reports its speed: "
                 + "useful when trying another phone.", 13, DIM).setPadding(dp(14), 0, dp(14), dp(12));
         TextView run = capsule("Run the engine test", v -> {
             EngineService.start(this, 2, 2, 120);
@@ -623,13 +623,13 @@ public class MainActivity extends Activity {
     }
 
     private void askErase(int os) {
-        String what = "iOS 16's iPhone";
+        String what = "iOS 12's iPhone";
         new AlertDialog.Builder(this)
                 .setTitle("Erase " + what + "?")
-                .setMessage("Its settings, installed apps and saves go; iOS starts as new. iOS 16 itself stays.")
+                .setMessage("Its settings, installed apps and saves go; iOS starts as new. iOS 12 itself stays.")
                 .setPositiveButton("Erase", (d, w) -> {
                     if (Guest.running()) {
-                        Toast.makeText(this, "Close iOS 16 first (side bar > Saves > Save and close)",
+                        Toast.makeText(this, "Close iOS 12 first (side bar > Saves > Save and close)",
                                 Toast.LENGTH_LONG).show();
                     } else {
                         Guest.select(this, os);
@@ -658,7 +658,7 @@ public class MainActivity extends Activity {
             Toast.makeText(this, busy, Toast.LENGTH_LONG).show();
             return;
         }
-        String name = "iOS 16";
+        String name = "iOS 12";
         new Thread(() -> {
             Installer.Removal r = Installer.removal(this, os);
             runOnUiThread(() -> {
@@ -669,7 +669,7 @@ public class MainActivity extends Activity {
                 new AlertDialog.Builder(this)
                         .setTitle("Remove " + name + " from this phone?")
                         .setMessage(what + ". That frees about " + size(r.bytes) + ".\n\n"
-                                + "To have it again, Set up downloads it from Apple again (or your PC sends it).")
+                                + "To have it again, Set up downloads it from Apple again.")
                         .setPositiveButton("Remove", (d, w) -> removeNow(os))
                         .setNegativeButton("Cancel", null)
                         .show();
@@ -683,7 +683,7 @@ public class MainActivity extends Activity {
             Toast.makeText(this, busy, Toast.LENGTH_LONG).show();
             return;
         }
-        String name = "iOS 16";
+        String name = "iOS 12";
         // in front until the files are gone: nothing starts on them meanwhile
         AlertDialog wait = new AlertDialog.Builder(this).setMessage("Removing " + name + "…").setCancelable(false).show();
         new Thread(() -> {
@@ -885,9 +885,9 @@ public class MainActivity extends Activity {
                 || Guest.running() && Guest.os(this) == os && "resuming".equals(Guest.state);
     }
 
-    private void refresh16() {
-        Panel c = p16;
-        boolean up = Guest.running() && Guest.os(this) == Guest.IOS16;
+    private void refresh12() {
+        Panel c = p12;
+        boolean up = Guest.running() && Guest.os(this) == Guest.IOS12;
         // the setup from Apple runs (its last step starts iOS once, in the background): the panel follows it
         if (SetupService.busy()) {
             state(c, STARTING, "Being installed");
@@ -901,14 +901,14 @@ public class MainActivity extends Activity {
         }
         if (!Guest.available(this)) {
             state(c, OFF, "Not installed");
-            detail(c, "Installs from Apple's servers on this phone (about 1.5 hours), or comes from your PC.");
+            detail(c, "Installs from Apple's servers on this phone (about 1-2 hours).");
             buttons(c, "Set up", false);
             showBack(c, null);
             showCrash(c, null);
             c.device.show(null, false, false);
             return;
         }
-        boolean starting = starting(Guest.IOS16);
+        boolean starting = starting(Guest.IOS12);
         state(c, starting ? STARTING : up ? RUNNING : READY, starting ? "Starting…" : up ? "Running" : "Ready");
         buttons(c, up ? "Open" : "Start", up);
         new Thread(() -> {
@@ -937,8 +937,8 @@ public class MainActivity extends Activity {
             if (!Guest.nativeMissing().isEmpty()) {
                 info += " This phone's CPU runs iOS in emulation only, much slower (it lacks ARMv8.2's " + Guest.nativeMissing() + ").";
             }
-            CrashReport.Record crash = up ? null : CrashReport.pendingFor(this, Guest.IOS16);
-            String text = (crashLine(crash) + error(Guest.IOS16, up) + info).trim();
+            CrashReport.Record crash = up ? null : CrashReport.pendingFor(this, Guest.IOS12);
+            String text = (crashLine(crash) + error(Guest.IOS12, up) + info).trim();
             Bitmap shot = shot(c);
             runOnUiThread(() -> {
                 state(c, starting ? STARTING : up ? RUNNING : READY, st);
@@ -1106,14 +1106,14 @@ public class MainActivity extends Activity {
 
     /** What each system is doing, and the saves (those come from qemu-img or QEMU: off the UI thread). */
     private void refresh() {
-        refresh16();
+        refresh12();
         if (Guest.turningOff()) {
-            Panel c = p16;
+            Panel c = p12;
             state(c, STARTING, "Turning off…");
         }
         showSettings();
         showPowerWarning();
-        footer.setText(String.format(java.util.Locale.ROOT, "ASoftware iOS %s  ·  %.1f GB free on this phone",
+        footer.setText(String.format(java.util.Locale.ROOT, "Kios %s  ·  %.1f GB free on this phone",
                 UpdateCheck.version(this), getFilesDir().getUsableSpace() / 1e9));
     }
 }

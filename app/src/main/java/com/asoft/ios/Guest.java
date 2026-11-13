@@ -23,20 +23,28 @@ final class Guest {
 
     static final long RAM_SIZE = 7L << 30;
 
-    // -- which iOS: 16 (-M virt, ramfb, no GPU)
+    // -- which iOS: 16 (-M virt, ramfb, no GPU) or 12 (-M virt, ramfb, no GPU)
 
-    static final int IOS16 = 16;
+    static final int IOS16 = 16, IOS12 = 12;
+
+    /** iOS 12 screen: 750x1334 (iPhone 6s/7/8 class). */
+    static final int FB12_W = 750, FB12_H = 1334;
+    /** iOS 12 RAM: 2 GiB. */
+    static final long RAM_SIZE_12 = 2L << 30;
+    /** iOS 12 kernel load address (XNU for arm64). */
+    static final long KERNEL_PA_12 = 0x10000000L;
+    static final long STUB_PA_12 = 0x10200000L;
 
     /** What the screens call @os. */
     static String osName(int os) {
         return "iOS " + os;
     }
     /** The iOS of the QEMU that runs, or ran last. */
-    private static volatile int runningOs = IOS16;
+    private static volatile int runningOs = IOS12;
 
     /** The iOS the user chose last (the one Start, Restart and the notification start). */
     static int selected(Context c) {
-        return c.getSharedPreferences("guest", Context.MODE_PRIVATE).getInt("os", IOS16);
+        return c.getSharedPreferences("guest", Context.MODE_PRIVATE).getInt("os", IOS12);
     }
 
     static void select(Context c, int os) {
@@ -247,10 +255,10 @@ final class Guest {
      * read-only root disk; deleting it erases the iPhone.
      */
     static File userDisk(Context c) {
-        return new File(c.getFilesDir(), "ios16-user.qcow2");
+        return new File(c.getFilesDir(), "ios12-user.qcow2");
     }
 
-    /** "ios16-user": iOS keeps its screen's scale in its MobileGestalt cache from the first boot on. */
+    /** "ios12-user": iOS keeps its screen's scale in its MobileGestalt cache from the first boot on. */
     private static String diskName(Context c, int forOs) {
         return "ios" + forOs + "-user";
     }
@@ -291,7 +299,7 @@ final class Guest {
             if (!available(c)) {
                 e.remove("os");
             } else {
-                e.putInt("os", IOS16);
+                e.putInt("os", IOS12);
             }
             startError = null;
         }
@@ -314,13 +322,13 @@ final class Guest {
     }
 
     /**
-     * The guest's RAM (MiB): iOS 16 runs with 7 GiB of RAM.
+     * The guest's RAM (MiB): iOS 12 runs with 2 GiB of RAM; iOS 16 runs with 7 GiB.
      */
     static int ramMiB(Context c) {
-        return 7168;
+        return runningOs == IOS12 ? 2048 : 7168;
     }
 
-    /** The RAM (MiB) iOS 16 booted with. */
+    /** The RAM (MiB) iOS booted with. */
     private static volatile int bootRamMiB;
 
     static int bootRamMiB() {
@@ -331,10 +339,10 @@ final class Guest {
         return new File(c.getFilesDir(), userPrefix(c) + tag + ".ram");
     }
 
-    /** What save @tag opens with: iOS 16's vCPUs; its RAM is fixed at 7 GiB. */
+    /** What save @tag opens with: vCPUs and RAM; iOS 16's RAM is fixed at 7 GiB, iOS 12's at 2 GiB. */
     static String hardware(Context c, String tag) {
         int cpus = savedCpus(c, tag);
-        return cpus + " vCPU";
+        return cpus + " vCPU" + (runningOs == IOS12 ? ", 2 GiB RAM" : ", 7 GiB RAM");
     }
 
     private static void ensureUserDisk(Context c, File g) throws IOException {
@@ -544,10 +552,10 @@ final class Guest {
      * gone; else why not, and it stays marked stale: never loaded by itself (quickStale).
      */
     static String dropQuick(Context c) {
-        setQuickStale(c, os(c), true);
+        setQuickStale(c, true);
         String why = deleteQuick(c);
         if (why == null) {
-            setQuickStale(c, os(c), false);
+            setQuickStale(c, false);
         } else {
             AppLog.note(c, "the quick save stays until the next start (then deleted, never loaded): " + why);
         }
@@ -600,7 +608,7 @@ final class Guest {
             // no log: nothing to read
         }
         if (lastOff > lastSave && lastFail > lastSave && userDisk(c).exists()) {
-            setQuickStale(c, IOS16, true);
+            setQuickStale(c, true);
             AppLog.note(c, "the log shows a Turn off whose quick-save delete failed: the old quick save is not loaded");
         }
         p.edit().putBoolean("stale-from-log-done", true).apply();
@@ -748,14 +756,12 @@ final class Guest {
     }
 
     /**
-     * Erase @forOs's iPhone (or watch): its user disk and what belongs to its saved states. The OS is
-     * always named: an iOS 16 import once erased whichever OS was selected (2026-11-08), iOS 26's or the
-     * watch's disk and saves among them.
+     * Erase @forOs's iPhone: its user disk and what belongs to its saved states.
      */
     static void erase(Context c) {
         userDisk(c).delete();
-        thumbFile(c, IOS16).delete();
-        String prefix = diskName(c, IOS16) + ".";
+        thumbFile(c, runningOs).delete();
+        String prefix = diskName(c, runningOs) + ".";
         File[] f = c.getFilesDir().listFiles((d, n) -> n.startsWith(prefix)
                 && (n.endsWith(".leds") || n.endsWith(".cpus") || n.endsWith(".ram")));
         if (f != null) {
@@ -936,7 +942,7 @@ final class Guest {
         }
         state = "booting";
         // the engine the system runs on, so the record's engine line (and its SHA-1) is a real one
-        track(IOS16, false, "a crash test", logAt, bootCpus, 7168, "", Emu.qemuPath(c));
+        track(runningOs, false, "a crash test", logAt, bootCpus, ramMiB(c), "", Emu.qemuPath(c));
     }
 
     static synchronized int pid(Context c) {
@@ -1098,7 +1104,7 @@ final class Guest {
         }
         File links = Emu.linkLibraries(c);
         writeResolvConf(c);
-        runningOs = IOS16;
+        runningOs = selected(c);
         appContext = c.getApplicationContext();
         File g = guestDir(c);
         File run = runDir(c);
@@ -1117,7 +1123,7 @@ final class Guest {
         // the record of the QEMU before reads its stderr, which this start truncates
         CrashReport.awaitCapture(15_000);
         long logAt = new File(runDir(c), "app.txt").length();
-        CrashReport.startedAgain(c, IOS16);
+        CrashReport.startedAgain(c, runningOs);
         AppLog.keepRunLogs(c);
         AppLog.note(c, "start: wanted " + (loadTag == null ? "a boot" : loadTag) + ", saves [" + tags + "] -> "
                 + (resumed ? "-loadvm " + loadTag : "boot"));
@@ -1137,6 +1143,10 @@ final class Guest {
         // it had when it was saved, so a display saved off still reads off.
         try (java.io.RandomAccessFile o = new java.io.RandomAccessFile(ledsFile(c), "rw")) {
             o.write(resumed ? savedLeds(c, loadTag) : 0);
+        }
+        if (runningOs == IOS12) {
+            start12(c, g, run, loadTag, resumed, smp, links, new ArrayList<>());
+            return;
         }
         int ramFd = Render.createGuestRam(RAM_SIZE);
         if (ramFd < 0) {
@@ -1181,14 +1191,16 @@ final class Guest {
             env.put("ASOFT_NATIVE_EL0_STATS", "1");
             // while this file exists EL0 stays under TCG: for comparing the two without a reboot
             env.put("ASOFT_NATIVE_EL0_OFF_FILE", new File(run, "native-off").getPath());
-            if (!plan.pin.isEmpty()) {
-                env.put("ASOFT_NATIVE_EL0_STUB_CPUS", plan.pin);
+            CpuPlan cp16 = CpuPlan.forThisPhone(c);
+            if (!cp16.pin.isEmpty()) {
+                env.put("ASOFT_NATIVE_EL0_STUB_CPUS", cp16.pin);
             }
         } else {
             AppLog.note(c, "native EL0 off: this CPU lacks " + missing + "; iOS runs under TCG only");
         }
-        if (!plan.pin.isEmpty()) {
-            env.put("ASOFT_VCPU_CPUS", plan.pin);   // QEMU pins each vCPU thread (tcg-accel-ops-mttcg.c)
+        CpuPlan cp16 = CpuPlan.forThisPhone(c);
+        if (!cp16.pin.isEmpty()) {
+            env.put("ASOFT_VCPU_CPUS", cp16.pin);   // QEMU pins each vCPU thread (tcg-accel-ops-mttcg.c)
         }
         env.put("ASOFT_EL_SAMPLER", "30");
         env.put("ASOFT_LEDS_FILE", ledsFile(c).getPath());
@@ -1208,7 +1220,7 @@ final class Guest {
             throw new IOException("cannot start QEMU");
         }
         state = resumed ? "resuming" : "booting";
-        track(IOS16, false, resumed ? "the save " + loadTag : "a boot", logAt, smp, 7168, "", Emu.qemuPath(c));
+        track(runningOs, false, resumed ? "the save " + loadTag : "a boot", logAt, smp, runningOs == IOS12 ? 2048 : 7168, "", Emu.qemuPath(c));
         connectQmp(c, pid);
     }
 
@@ -1457,5 +1469,90 @@ final class Guest {
         }
         pid = -1;
         state = "stopped";
+    }
+
+    /** Starts iOS 12: QEMU command line for the 64-bit virt machine. */
+    private static void start12(Context c, File g, File run, String loadTag, boolean resumed, int smp,
+            File links, List<String> envpBase) throws IOException {
+        int ramFd = Render.createGuestRam(RAM_SIZE_12);
+        if (ramFd < 0) {
+            throw new IOException("no memfd for the guest's RAM");
+        }
+        List<String> cmd = new ArrayList<>(List.of(Emu.qemuPath(c),
+                "-M", "virt,gic-version=3,memory-backend=m0",
+                "-object", "memory-backend-memfd,id=m0,size=2G,share=on",
+                "-cpu", "cortex-a76", "-smp", String.valueOf(smp), "-m", "2G",
+                "-display", "none", "-monitor", "none", "-parallel", "none",
+                "-device", "ramfb", "-device", "virtio-keyboard-device", "-device", "virtio-tablet-device",
+                "-qmp", "unix:" + qmpPath(c) + ",server,nowait",
+                "-serial", "file:" + new File(run, "serial.txt").getPath(),
+                "-d", "guest_errors,unimp", "-D", new File(run, "qemu.log").getPath(),
+                "-no-reboot", "-nic", "none",
+                "-device", "loader,file=" + new File(g, "ram.bin").getPath() + ",addr=0x" + Long.toHexString(KERNEL_PA_12) + ",force-raw=on",
+                "-device", "loader,file=" + new File(g, "stub.bin").getPath() + ",addr=0x" + Long.toHexString(STUB_PA_12) + ",force-raw=on",
+                "-device", "loader,addr=" + Long.toHexString(STUB_PA_12) + ",cpu-num=0",
+                "-global", "virtio-mmio.force-legacy=false",
+                "-name", "ASoftware iOS 12",
+                "-netdev", "user,id=net0", "-device", "virtio-net-device,netdev=net0",
+                "-drive", "file=" + userDisk(c).getPath() + ",if=none,id=root,cache=none,format=qcow2",
+                "-device", "virtio-blk-device,drive=root"));
+        if (resumed) {
+            cmd.add("-loadvm");
+            cmd.add(loadTag);
+        }
+        Map<String, String> env = new java.util.HashMap<>(System.getenv());
+        env.putAll(envMap(envpBase));
+        Emu.baseEnv(c, links, env);
+        env.put("ASOFT_GUEST_RAM_FD", String.valueOf(ramFd));
+        String missing = nativeMissing();
+        if (missing.isEmpty()) {
+            env.put("ASOFT_NATIVE_EL0", "1");
+            env.put("ASOFT_NATIVE_EL0_TPIDRRO", "1");
+            env.put("ASOFT_NATIVE_EL0_STUBS", "8");
+            env.put("ASOFT_NATIVE_EL0_DELAY_MS", "20000");
+            env.put("ASOFT_NATIVE_EL0_STATS", "1");
+            env.put("ASOFT_NATIVE_EL0_OFF_FILE", new File(run, "native-off").getPath());
+            CpuPlan cp12 = CpuPlan.forThisPhone(c);
+            if (!cp12.pin.isEmpty()) {
+                env.put("ASOFT_NATIVE_EL0_STUB_CPUS", cp12.pin);
+            }
+        } else {
+            AppLog.note(c, "native EL0 off: this CPU lacks " + missing + "; iOS runs under TCG only");
+        }
+        CpuPlan cp12 = CpuPlan.forThisPhone(c);
+        if (!cp12.pin.isEmpty()) {
+            env.put("ASOFT_VCPU_CPUS", cp12.pin);
+        }
+        env.put("ASOFT_EL_SAMPLER", "30");
+        env.put("ASOFT_LEDS_FILE", ledsFile(c).getPath());
+        try (PrintWriter w = new PrintWriter(new FileWriter(new File(run, "cmdline.txt")))) {
+            w.println(String.join(" ", cmd));
+        }
+        List<String> envp = new ArrayList<>();
+        for (Map.Entry<String, String> e : env.entrySet()) {
+            envp.add(e.getKey() + "=" + e.getValue());
+        }
+        setDirty(c, true);
+        endingByApp = -1;
+        noticedPid = -1;
+        pid = Render.spawn(cmd.toArray(new String[0]), envp.toArray(new String[0]),
+                new File(run, "qemu-stderr.txt").getPath(), c.getFilesDir().getPath());
+        if (pid < 0) {
+            throw new IOException("cannot start QEMU");
+        }
+        state = resumed ? "resuming" : "booting";
+        track(IOS12, false, resumed ? "the save " + loadTag : "a boot", logAt, smp, 2048, "", Emu.qemuPath(c));
+        connectQmp(c, pid);
+    }
+
+    private static Map<String, String> envMap(List<String> envp) {
+        Map<String, String> m = new java.util.HashMap<>();
+        for (String e : envp) {
+            int eq = e.indexOf('=');
+            if (eq > 0) {
+                m.put(e.substring(0, eq), e.substring(eq + 1));
+            }
+        }
+        return m;
     }
 }

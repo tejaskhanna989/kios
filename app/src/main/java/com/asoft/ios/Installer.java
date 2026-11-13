@@ -16,8 +16,8 @@ import java.util.List;
  * Brings iOS in from a bundle the PC made (pc/Send-ToPhone.ps1): a tar of asoft-bundle.json,
  * payload.bin (the kernel with the device tree, from the PC install) and disk.qcow2 (iOS's root
  * disk, one compressed qcow2). It is read as a stream, so it can come from a picked file or the
- * folder adb pushes to, and is unpacked into files/ios16.part, checked, then renamed to
- * files/ios16. The iPhone's own data (user disk, saves) belongs to the old disk and goes.
+ * folder adb pushes to, and is unpacked into files/ios12.part, checked, then renamed to
+ * files/ios12. The iPhone's own data (user disk, saves) belongs to the old disk and goes.
  */
 final class Installer {
     static final String[] PARTS = {"asoft-bundle.json", "payload.bin", "disk.qcow2"};
@@ -31,7 +31,7 @@ final class Installer {
     private Installer() {}
 
     static File dir(Context c) {
-        return new File(c.getFilesDir(), "ios16");
+        return new File(c.getFilesDir(), "ios12");
     }
 
     /** iOS was brought in: the disk and the kernel are there. */
@@ -111,11 +111,11 @@ final class Installer {
             // room they free is there for the new disk
             untar(in, part, total, p, m -> {
                 os[0] = bundleOs(m);
-                if ("16".equals(os[0])) {
+                if ("12".equals(os[0])) {
                     Guest.erase(c);
                     deleteTree(dir(c));
                 } else {
-                    throw new IOException("a bundle this app does not know: iOS 16 only");
+                    throw new IOException("a bundle this app does not know: iOS 12 only");
                 }
             });
             if (os[0] == null) {
@@ -124,7 +124,7 @@ final class Installer {
             p.at("Checking", 0, -1);
             File d;
             check(c, part);
-            Guest.select(c, Guest.IOS16);
+            Guest.select(c, Guest.IOS12);
             d = dir(c);
             if (!part.renameTo(d)) {
                 throw new IOException("cannot move " + part + " to " + d);
@@ -154,13 +154,13 @@ final class Installer {
         }
     }
 
-    /** "16" from a bundle's manifest. */
+    /** "12" from a bundle's manifest. */
     private static String bundleOs(File manifest) throws IOException {
         String text = new String(Files.readAllBytes(manifest.toPath()), StandardCharsets.UTF_8);
         try {
             org.json.JSONObject m = new org.json.JSONObject(text);
             String os = m.optString("ios");
-            if (m.optInt("format") != 1 || !"16".equals(os)) {
+            if (m.optInt("format") != 1 || !"12".equals(os)) {
                 throw new IOException("a bundle this app does not know: " + text.trim());
             }
             return os;
@@ -174,15 +174,15 @@ final class Installer {
     }
 
     /**
-     * Installs iOS 16 from the three files of a bundle that this phone made itself (PhoneSetup): they
-     * move from @from (the same file system) into files/ios16.part, pass the checks an import does,
-     * then the folder becomes files/ios16. As install(), iOS 16's own iPhone (user disk, saves) goes first.
+     * Installs iOS 12 from the three files of a bundle that this phone made itself (PhoneSetup): they
+     * move from @from (the same file system) into files/ios12.part, pass the checks an import does,
+     * then the folder becomes files/ios12. As install(), iOS 12's own iPhone (user disk, saves) goes first.
      */
     static void finish(Context c, File from) throws IOException {
         Guest.erase(c);
-        Guest.select(c, Guest.IOS16);
+        Guest.select(c, Guest.IOS12);
         deleteTree(dir(c));
-        File part = new File(c.getFilesDir(), "ios16.part");
+        File part = new File(c.getFilesDir(), "ios12.part");
         deleteTree(part);
         if (!part.mkdirs()) {
             throw new IOException("cannot create " + part);
@@ -214,7 +214,7 @@ final class Installer {
         String manifest = new String(Files.readAllBytes(new File(part, PARTS[0]).toPath()), StandardCharsets.UTF_8);
         try {
             org.json.JSONObject m = new org.json.JSONObject(manifest);
-            if (m.optInt("format") != 1 || !"16".equals(m.optString("ios"))) {
+            if (m.optInt("format") != 1 || !"12".equals(m.optString("ios"))) {
                 throw new IOException("a bundle this app does not know: " + manifest.trim());
             }
         } catch (org.json.JSONException e) {
@@ -433,7 +433,7 @@ final class Installer {
         Removal r = new Removal();
         r.files.addAll(Guest.ownFiles(c, os));
         r.files.add(dir(c));
-        r.files.add(new File(c.getFilesDir(), "ios16.part"));
+        r.files.add(new File(c.getFilesDir(), "ios12.part"));
         r.files.add(PhoneSetup.work(c));
         r.bytes = freedBytes(r.files);
         return r;
@@ -547,7 +547,7 @@ final class Installer {
         Guest.forgetSystem(c, os);
         // its crash notice goes (a new install is not the system that crashed); the records stay in files/run
         CrashReport.startedAgain(c, os);
-        SetupService.forget(c, "ios16");
+        SetupService.forget(c, "ios12");
         AppLog.note(c, String.format(java.util.Locale.ROOT, "remove %s: %.2f GB (%d bytes) given back%s; %.1f GB free before,"
                 + " %.1f after; removed: %s", Guest.osName(os), r.bytes / 1e9, r.bytes,
                 left > 0 ? ", " + left + " paths could not be deleted" : "", free / 1e9, c.getFilesDir().getUsableSpace() / 1e9, what));

@@ -18,18 +18,18 @@ import java.util.Map;
 import java.util.function.BooleanSupplier;
 
 /**
- * iOS 16 from Apple, on this phone: what the PC's Install-ASoftware.ps1 and Send-ToPhone.ps1 do, with
+ * iOS 12 from Apple, on this phone: what the PC's Install-ASoftware.ps1 and Send-ToPhone.ps1 do, with
  * the same helper VM jobs and tools, ending in the three files a PC bundle has (asoft-bundle.json,
- * payload.bin, disk.qcow2) in files/ios16, as Installer's import leaves them.
+ * payload.bin, disk.qcow2) in files/ios12, as Installer's import leaves them.
  *
  *   ipsw     only the members a step needs, into a sparse copy of the IPSW (IpswFetch)
  *   payload  the helper's job-run: tools/ipsw-devicetree.py, mkadt.py, mkpayload.py with our kernel
  *   disk     the helper's job-build-root.sh on the sparse IPSW (unchanged), 16 GiB root + 10 GiB scratch
  *   pack     qemu-img convert -c (zstd), as Send-ToPhone.ps1 packs the disk
- *   install  into files/ios16 through Installer.finish()
+ *   install  into files/ios12 through Installer.finish()
  *
  * What to fetch comes from assets/setup/asoft-setup.json, the list the PC installers share. Each step
- * leaves a marker in files/setup/ios16, so a run that stopped (the app killed, the phone restarted, no
+ * leaves a marker in files/setup/ios12, so a run that stopped (the app killed, the phone restarted, no
  * room) goes on where it was.
  */
 final class PhoneSetup {
@@ -48,7 +48,7 @@ final class PhoneSetup {
     private PhoneSetup() {}
 
     static File work(Context c) {
-        return new File(c.getFilesDir(), "setup/ios16");
+        return new File(c.getFilesDir(), "setup/ios12");
     }
 
     private static File mark(Context c, String step) {
@@ -76,27 +76,23 @@ final class PhoneSetup {
 
     /**
      * Bytes the rest of the run needs free at its height, beyond what it has on disk already (the screen
-     * and the checks): measured on the S25 (2026-11-08) the members 5.84 GB, the scratch disk 7.32 GB and
-     * the root 12.24 GB at once, then the root and its packed copy (6.19 GB), then the first start's
-     * writes and save (3.9 GB). Bytes already downloaded count against the members.
+     * and the checks): iOS 12 is smaller than iOS 16.
      */
     static long needBytes(Context c) {
         File w = work(c);
         long need;
         if (!done(c, "disk")) {
-            // the height: the members, the scratch disk and the root disk at once; later steps free more than they add
-            need = (done(c, "ipsw") ? 0 : Math.max(0, 5_840_000_000L - allocated(new File(w, "ipsw-sparse.ipsw"))))
-                    + 7_400_000_000L + 12_300_000_000L - allocated(new File(w, "root.qcow2")) - allocated(new File(w, "scratch.qcow2"));
+            need = (done(c, "ipsw") ? 0 : Math.max(0, 2_500_000_000L - allocated(new File(w, "ipsw-sparse.ipsw"))))
+                    + 4_000_000_000L + 6_000_000_000L - allocated(new File(w, "root.qcow2")) - allocated(new File(w, "scratch.qcow2"));
         } else if (!done(c, "pack")) {
-            // the IPSW and the scratch disk go before the packed copy is written
-            need = 6_300_000_000L - allocated(new File(w, "ipsw-sparse.ipsw")) - allocated(new File(w, "scratch.qcow2"))
+            need = 3_000_000_000L - allocated(new File(w, "ipsw-sparse.ipsw")) - allocated(new File(w, "scratch.qcow2"))
                     - allocated(new File(w, "disk.qcow2"));
         } else if (!done(c, "firststart")) {
-            need = 4_000_000_000L - allocated(new File(w, "root.qcow2"));      // the root goes before iOS's first start
+            need = 2_000_000_000L - allocated(new File(w, "root.qcow2"));
         } else {
             need = 0;
         }
-        return Math.max(0, need) + 1_000_000_000L;
+        return Math.max(0, need) + 500_000_000L;
     }
 
     /** The blocks a (sparse) file holds, as du counts them. */
@@ -112,21 +108,21 @@ final class PhoneSetup {
     static void run(Context c, int cpus, Progress p, BooleanSupplier cancelled, IpswFetch[] current) throws IOException {
         File w = work(c);
         w.mkdirs();
-        JSONObject ios16;
+        JSONObject ios12;
         try {
-            ios16 = manifest(c).getJSONObject("os").getJSONObject("ios16");
+            ios12 = manifest(c).getJSONObject("os").getJSONObject("ios12");
         } catch (JSONException e) {
-            throw new IOException("asoft-setup.json has no iOS 16: " + e.getMessage());
+            throw new IOException("asoft-setup.json has no iOS 12: " + e.getMessage());
         }
         File ipsw = new File(w, "ipsw-sparse.ipsw");
         // (once the disk is built the IPSW is not needed: it may have gone early, see disk())
         if (!done(c, "ipsw") && !done(c, "disk")) {
-            fetch(c, ios16, ipsw, p, cancelled, current);
+            fetch(c, ios12, ipsw, p, cancelled, current);
             setDone(c, "ipsw");
         }
         File payload = new File(w, "payload.bin");
         if (!done(c, "payload")) {
-            payload(c, ios16, ipsw, payload, cpus, p, cancelled);
+            payload(c, ios12, ipsw, payload, cpus, p, cancelled);
             setDone(c, "payload");
         }
         File root = new File(w, "root.qcow2"), scratch = new File(w, "scratch.qcow2");
@@ -154,8 +150,8 @@ final class PhoneSetup {
             try (FileOutputStream o = new FileOutputStream(new File(w, "asoft-bundle.json"))) {
                 JSONObject m = new JSONObject();
                 m.put("format", 1);
-                m.put("ios", "16");
-                m.put("build", ios16.optString("build", "20H392"));
+                m.put("ios", "12");
+                m.put("build", ios12.optString("build", "16H5"));
                 m.put("kernel", "out-0103");
                 m.put("withMyData", false);
                 m.put("made", new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.ROOT).format(new java.util.Date()));
@@ -172,7 +168,7 @@ final class PhoneSetup {
             firstStart(c, p, cancelled);
             setDone(c, "firststart");
         }
-        // what stays: the markers (the screen shows the steps done); the files went into files/ios16
+        // what stays: the markers (the screen shows the steps done); the files went into files/ios12
         for (String n : new String[] {"payload.bin", "disk.qcow2", "asoft-bundle.json"}) {
             new File(w, n).delete();
         }
@@ -198,7 +194,7 @@ final class PhoneSetup {
         // A boot, in this foreground service's own process: GuestService (another foreground service)
         // may not be started from the background on Android 12 and later, and the screen may be off by now.
         // Guest.start is what GuestService runs for a boot; the screen attaches to it if the user opens iOS.
-        Guest.select(c, Guest.IOS16);
+        Guest.select(c, Guest.IOS12);
         Guest.startError = null;
         Guest.start(c, null);
         boolean offSeen = false, up = false;
@@ -270,12 +266,12 @@ final class PhoneSetup {
 
     // -- ipsw -----------------------------------------------------------------------------------
 
-    private static void fetch(Context c, JSONObject ios16, File ipsw, Progress p, BooleanSupplier cancelled, IpswFetch[] current)
+    private static void fetch(Context c, JSONObject ios12, File ipsw, Progress p, BooleanSupplier cancelled, IpswFetch[] current)
             throws IOException {
         JSONObject src;
         JSONArray members;
         try {
-            src = ios16.getJSONObject("sources").getJSONObject("ipsw");
+            src = ios12.getJSONObject("sources").getJSONObject("ipsw");
             members = src.getJSONArray("members");
         } catch (JSONException e) {
             throw new IOException("asoft-setup.json: " + e.getMessage());
@@ -354,7 +350,7 @@ final class PhoneSetup {
         return to;
     }
 
-    private static void payload(Context c, JSONObject ios16, File ipsw, File out, int cpus, Progress p, BooleanSupplier cancelled)
+    private static void payload(Context c, JSONObject ios12, File ipsw, File out, int cpus, Progress p, BooleanSupplier cancelled)
             throws IOException {
         p.step("payload", 0, "The kernel and this iPhone's device tree");
         File jd = new File(work(c), "payload-job");
@@ -372,7 +368,7 @@ final class PhoneSetup {
                 + "ASOFT_DEVICE_TREE=$PWD/d22ap.adt python3 tools/mkadt.py qemu.adt --qemu --highmem\n"
                 + "echo 'ASOFT: progress 70 payload'\n"
                 + "python3 tools/mkpayload.py kernel qemu.adt payload.bin --cmdline \"$(cat cmdline.txt)\"\n");
-        files.put("cmdline.txt", ios16.optString("bootArgs"));
+        files.put("cmdline.txt", ios12.optString("bootArgs"));
         files.put("kernel", asset(c, "xnu/kernel.development.sweet", new File(jd, "kernel")));
         for (String t : new String[] {"ipsw-devicetree.py", "lzfse.py", "mkadt.py", "adt.py", "mkpayload.py"}) {
             files.put("tools/" + t, asset(c, "setup/tools/" + t, new File(jd, "tools/" + t)));
@@ -397,9 +393,9 @@ final class PhoneSetup {
                 p.log(text);
             }
         };
-        Helper.Result r = Helper.run(c, "run", disks, Math.min(cpus, 4), jd, l, cancelled, true, Helper.ramMiB(c, Helper.FLOOR_IOS16));
-        if (Helper.worthRetry(r, Helper.FLOOR_IOS16) && !cancelled.getAsBoolean()) {
-            int ram = Helper.retryRam(r, Helper.FLOOR_IOS16);
+        Helper.Result r = Helper.run(c, "run", disks, Math.min(cpus, 4), jd, l, cancelled, true, Helper.ramMiB(c, Helper.FLOOR_IOS12));
+        if (Helper.worthRetry(r, Helper.FLOOR_IOS12) && !cancelled.getAsBoolean()) {
+            int ram = Helper.retryRam(r, Helper.FLOOR_IOS12);
             AppLog.note(c, "setup: the kernel job failed (" + r.failure() + "); again under TCG with " + ram + " MiB");
             r = Helper.run(c, "run", disks, Math.min(cpus, 4), jd, l, cancelled, false, ram);
         }
@@ -436,11 +432,11 @@ final class PhoneSetup {
         disks.add(new Helper.Disk("ipsw", ipsw, "raw", true));
         disks.add(new Helper.Disk("root", root, "qcow2", false));
         disks.add(new Helper.Disk("scratch", scratch, "qcow2", false));
-        Helper.Result r = buildRoot(c, disks, cpus, root, ipsw, p, cancelled, true, Helper.ramMiB(c, Helper.FLOOR_IOS16));
-        if (Helper.worthRetry(r, Helper.FLOOR_IOS16) && !cancelled.getAsBoolean() && ipsw.length() > 0) {
+        Helper.Result r = buildRoot(c, disks, cpus, root, ipsw, p, cancelled, true, Helper.ramMiB(c, Helper.FLOOR_IOS12));
+        if (Helper.worthRetry(r, Helper.FLOOR_IOS12) && !cancelled.getAsBoolean() && ipsw.length() > 0) {
             // the native engine for Linux is new (2026-11-08): once more under TCG, as on the PC; after Android's
             // memory killer with less RAM too
-            int ram = Helper.retryRam(r, Helper.FLOOR_IOS16);
+            int ram = Helper.retryRam(r, Helper.FLOOR_IOS12);
             AppLog.note(c, "setup: the disk job failed (" + r.failure() + ", " + r.how() + "); again under TCG with " + ram + " MiB");
             for (File f : new File[] {root, scratch}) {
                 f.delete();

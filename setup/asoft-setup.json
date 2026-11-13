@@ -84,168 +84,6 @@
     }
   },
   "os": {
-    "ios16": {
-      "title": "iOS 16.7.16 (iPhone X)",
-      "build": "20H392",
-      "needs": [],
-      "sources": {
-        "ipsw": {
-          "url": "https://updates.cdn-apple.com/2025FallFCS/fullrestores/122-77006/1158E502-D76D-4226-AA06-ED5E30CD1111/iPhone10,3,iPhone10,6_16.7.16_20H392_Restore.ipsw",
-          "bytes": 6171035648,
-          "sha256": "ECE1194F7E233E9109C5790A8D23A4564A10A254E15EC5B09978A343265568FB",
-          "members": [
-            {
-              "name": "BuildManifest.plist",
-              "role": "manifest",
-              "bytes": 449774,
-              "method": 8,
-              "zipBytes": 27322,
-              "crc32": "68485d7a"
-            },
-            {
-              "name": "087-86698-044.dmg",
-              "role": "OS",
-              "bytes": 4730814044,
-              "method": 0,
-              "crc32": "66ccd39f"
-            },
-            {
-              "name": "087-86593-047.dmg",
-              "role": "SystemOS",
-              "bytes": 2743074816,
-              "method": 8,
-              "zipBytes": 1097727251,
-              "crc32": "7f8fabcd"
-            },
-            {
-              "name": "087-86715-047.dmg",
-              "role": "AppOS",
-              "bytes": 10485760,
-              "method": 8,
-              "zipBytes": 2381197,
-              "crc32": "ed284220"
-            },
-            {
-              "name": "Firmware/all_flash/DeviceTree.d22ap.im4p",
-              "role": "devicetree",
-              "bytes": 33719,
-              "method": 8,
-              "zipBytes": 33720,
-              "crc32": "a9657430"
-            }
-          ],
-          "note": "The PC downloads the whole IPSW (curl, SHA-256); the phone fetches only these members into a sparse copy of the IPSW (same offsets, plus the central directory), which job-build-root.sh and ipsw-devicetree.py read unchanged. ipsw-members.py takes OS/SystemOS/AppOS from BuildManifest's first D22* Erase identity (d221ap; the same images as d22ap)."
-        }
-      },
-      "kernel": {
-        "from": "xnu/out-0103/kernel.development.sweet",
-        "note": "our XNU build: in the PC package and the app"
-      },
-      "bootArgs": "debug=0xc serial=3 cpus=4 keepsyms=1 -enable_kprintf_spam -noprogress rd=vblkroot0 vblkrw=1 rootrw=1 unentitled_ios_sim_launch=1 ignition_level=1 wdt_test=no_user_checkin launchd_unsecure_cache=1 wdt=-1 sweetfb_hz=30 launchd_disable_all_timeouts=1 sweetfb_noconsole=1 sweetfb_keepon=1",
-      "steps": [
-        {
-          "id": "app",
-          "title": "App files",
-          "where": [
-            "pc"
-          ],
-          "pc": {
-            "s": 5,
-            "addGB": 0.7,
-            "keepGB": 0.7
-          }
-        },
-        {
-          "id": "python",
-          "title": "Python",
-          "where": [
-            "pc"
-          ],
-          "pc": {
-            "s": 1,
-            "addGB": 0.05,
-            "keepGB": 0.05
-          }
-        },
-        {
-          "id": "ipsw",
-          "title": "iOS 16.7.16 (iPhone X) from Apple",
-          "where": [
-            "pc",
-            "phone"
-          ],
-          "pc": {
-            "s": 10,
-            "addGB": 6.17,
-            "keepGB": 6.17
-          },
-          "phone": {
-            "members": "all of sources.ipsw.members",
-            "addGB": 5.84
-          }
-        },
-        {
-          "id": "disk",
-          "title": "The iOS disk",
-          "where": [
-            "pc",
-            "phone"
-          ],
-          "helperJob": "build-root",
-          "pc": {
-            "s": 1277,
-            "thr": 3,
-            "addGB": 20.0,
-            "keepGB": 12.4
-          }
-        },
-        {
-          "id": "payload",
-          "title": "The kernel with this iPhone's device tree",
-          "where": [
-            "phone"
-          ],
-          "helperJob": "run",
-          "tools": [
-            "tools/ipsw-devicetree.py",
-            "tools/lzfse.py",
-            "tools/mkadt.py",
-            "tools/adt.py",
-            "tools/mkpayload.py"
-          ],
-          "note": "the PC makes it at every start (scripts/run-windows.ps1) and in Send-ToPhone.ps1"
-        },
-        {
-          "id": "pack",
-          "title": "The disk, compressed (qemu-img convert -c, zstd)",
-          "where": [
-            "phone"
-          ],
-          "note": "Send-ToPhone.ps1 does this on the PC"
-        },
-        {
-          "id": "firststart",
-          "title": "First start of iOS (once, 20-30 min)",
-          "where": [
-            "pc",
-            "phone"
-          ],
-          "pc": {
-            "s": 1292,
-            "thr": 3,
-            "addGB": 0.5,
-            "keepGB": 0.5
-          }
-        },
-        {
-          "id": "shortcut",
-          "title": "Shortcut",
-          "where": [
-            "pc"
-          ]
-        }
-      ]
-    },
     "ios26": {
       "title": "iOS 26.6.2 (iPhone17,3) on the cloudOS 26.4b research kernel",
       "build": "23G90",
@@ -955,6 +793,102 @@
         "TOP": "root.qcow2"
       },
       "note": "PC: the Linux steps run in WSL (no helper mode). The phone runs rootfs, patches, trustcache and activation in the helper VM (mk-rootw.sh takes a block device as OUT since phone-steps), decrypt, kernel and devicetree in Java (Unpack) and gpu-driver from the shared folder"
+    },
+    "ios12": {
+      "title": "iOS 12 (iPhone 6s/7/8 class)",
+      "build": "16H5",
+      "needs": [],
+      "sources": {
+        "ipsw": {
+          "url": "PLACEHOLDER: replace with real iOS 12 IPSW URL from Apple",
+          "bytes": 2500000000,
+          "members": [
+            {
+              "name": "BuildManifest.plist",
+              "role": "manifest",
+              "bytes": 100000,
+              "method": 8,
+              "zipBytes": 50000,
+              "crc32": "PLACEHOLDER"
+            },
+            {
+              "name": "022-XXXXX-XXX.dmg",
+              "role": "OS",
+              "bytes": 2000000000,
+              "method": 0,
+              "crc32": "PLACEHOLDER"
+            },
+            {
+              "name": "Firmware/all_flash/DeviceTree.j97ap.im4p",
+              "role": "devicetree",
+              "bytes": 30000,
+              "method": 8,
+              "zipBytes": 30001,
+              "crc32": "PLACEHOLDER"
+            }
+          ],
+          "note": "PLACEHOLDER: replace with real iOS 12 IPSW details"
+        }
+      },
+      "kernel": {
+        "from": "xnu/kernel.development.sweet",
+        "note": "our XNU build"
+      },
+      "bootArgs": "debug=0xc serial=3 cpus=2 keepsyms=1 -noprogress rd=disk0s1 wdt=-1 keepsyms=1 launchd_unsecure_cache=1 launchd_disable_all_timeouts=1 ignition_level=1 wdt=-1",
+      "steps": [
+        {
+          "id": "ipsw",
+          "title": "iOS 12 from Apple",
+          "where": [
+            "phone"
+          ],
+          "phone": {
+            "members": "all of sources.ipsw.members",
+            "addGB": 2.5
+          }
+        },
+        {
+          "id": "disk",
+          "title": "The iOS disk",
+          "where": [
+            "phone"
+          ],
+          "helperJob": "build-root",
+          "phone": {
+            "addGB": 6.0,
+            "keepGB": 4.0
+          }
+        },
+        {
+          "id": "payload",
+          "title": "The kernel with this iPhone's device tree",
+          "where": [
+            "phone"
+          ],
+          "helperJob": "run",
+          "tools": [
+            "tools/ipsw-devicetree.py",
+            "tools/lzfse.py",
+            "tools/mkadt.py",
+            "tools/adt.py",
+            "tools/mkpayload.py"
+          ]
+        },
+        {
+          "id": "pack",
+          "title": "The disk, compressed (qemu-img convert -c, zstd)",
+          "where": [
+            "phone"
+          ]
+        },
+        {
+          "id": "firststart",
+          "title": "First start of iOS (once, 10-20 min)",
+          "where": [
+            "phone"
+          ]
+        }
+      ]
     }
   }
 }
