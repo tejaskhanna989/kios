@@ -193,6 +193,7 @@ final class Guest {
     static volatile String preparing;
     /** True when this QEMU was started from the saved state. */
     static volatile boolean resumed;
+    static volatile String loadedTag;
     private static final java.util.concurrent.atomic.AtomicBoolean saving = new java.util.concurrent.atomic.AtomicBoolean();
 
     static File runDir(Context c) {
@@ -804,6 +805,27 @@ final class Guest {
         keepCpus(c, tag);
     }
 
+    private static File savedCpusFile(Context c, String tag) {
+        return new File(c.getFilesDir(), userPrefix(c) + tag + ".cpus");
+    }
+
+    private static int currentLeds(Context c) {
+        try (java.io.RandomAccessFile in = new java.io.RandomAccessFile(ledsFile(c), "r")) {
+            int b = in.read();
+            return b < 0 ? 0 : b;
+        } catch (IOException e) {
+            return 0;
+        }
+    }
+
+    private static void keepCpus(Context c, String tag) {
+        try (PrintWriter w = new PrintWriter(new FileWriter(savedCpusFile(c, tag)))) {
+            w.println(bootCpus);
+        } catch (IOException ignored) {
+            // read as 4: a load then fails and the start falls back to a boot
+        }
+    }
+
     // -- QEMU's own ends, for the crash report (CrashReport)
 
     /** The QEMU the app asked to end (a stop, a save's quit, a turn off, the setup's end of a boot): its end is no crash. */
@@ -1059,6 +1081,8 @@ final class Guest {
 
     /** QEMU's Scroll Lock LED bit: ASoftware's XNU lights it while iOS has the display off (xnu 0102). */
     static final int SCROLL_LOCK_LED = 1;
+    /** The keyboard/saves lock: keeps save+note atomic. */
+    private static final Object KBD = new Object();
 
     static synchronized boolean running() {
         boolean a = Render.alive(pid);
