@@ -194,6 +194,7 @@ final class Guest {
     /** True when this QEMU was started from the saved state. */
     static volatile boolean resumed;
     static volatile String loadedTag;
+    private static volatile int bootCpus;
     private static final java.util.concurrent.atomic.AtomicBoolean saving = new java.util.concurrent.atomic.AtomicBoolean();
 
     static File runDir(Context c) {
@@ -1497,7 +1498,7 @@ final class Guest {
         if (Render.alive(p)) {
             Render.forceKill(p);
         } else if (asked && appContext != null) {
-            setDirty(appContext, runningOs, false);     // stop flushed the disk, quit ended QEMU
+            setDirty(appContext, false);     // stop flushed the disk, quit ended QEMU
         }
         if (q != null) {
             q.close();
