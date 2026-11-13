@@ -1325,6 +1325,11 @@ final class Guest {
                 keepLeds(c, tag);
             }
             return null;
+        } finally {
+            saving.set(false);
+        }
+    }
+
     static String powerOff(Context c) {
         waitForSave();
         if (!saving.compareAndSet(false, true)) {
