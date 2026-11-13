@@ -1589,6 +1589,7 @@ final class Guest {
             throw new IOException("cannot start QEMU");
         }
         state = resumed ? "resuming" : "booting";
+        long logAt = new File(runDir(c), "app.txt").length();
         track(12, false, resumed ? "the save " + loadTag : "a boot", logAt, smp, 2048, "", Emu.qemuPath(c));
         connectQmp(c, pid);
     }
