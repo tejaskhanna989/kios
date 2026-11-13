@@ -1045,6 +1045,14 @@ final class Guest {
         return why;
     }
 
+    static synchronized boolean running() {
+        boolean a = Render.alive(pid);
+        if (!a && pid > 0) {
+            noticeEnd(pid);
+        }
+        return a;
+    }
+
     /** The QEMU stop() let go of: it may still hold the user disk for a few seconds. */
     private static volatile int endingPid = -1;
 
