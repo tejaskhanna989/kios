@@ -1,6 +1,6 @@
 #!/bin/bash
 # test-ios26-who.sh OUTDIR [MIN=17]: what keeps iOS 26's vCPUs busy for ~13 minutes after a boot (APK-PLAN §6.20)?
-# A boot of the user's disk in the dev app with ASOFT_WHO=1 (QEMU's sampler counts the busy samples by address
+# A boot of the user's disk in the dev app with KIOS_WHO=1 (QEMU's sampler counts the busy samples by address
 # space and kernel PC, and the syscalls by address space and number), left alone at the lock screen for MIN minutes;
 # who-report.py sums them per phase. Ends with the app's off (no save): the quick save the user starts from stays.
 OUT=${1:?output directory}
@@ -14,7 +14,7 @@ qpid() { adb shell "ps -A -o PID,ARGS | grep '[l]ibqemu26.so -name' | awk '{prin
 log() { echo "$(date +%T) $*" | tee -a "$OUT/who-run.txt"; }
 rs() { adb shell "run-as $PKG sh -c '$1'" | tr -d '\r'; }
 [ -z "$(qpid)" ] || { echo "a QEMU of the dev app runs already"; exit 1; }
-printf '%s\n' "env.ASOFT_WHO=1" > "$OUT/ios26.in"
+printf '%s\n' "env.KIOS_WHO=1" > "$OUT/ios26.in"
 adb push "$(cygpath -w "$OUT/ios26.in")" "$EXT/ios26.txt" >/dev/null
 log "start: $(heat | tr '\n' ' ')"
 adb shell "am start-foreground-service -n $PKG/com.asoft.ios.GuestService --ez cold true" >/dev/null

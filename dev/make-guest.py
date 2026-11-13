@@ -3,7 +3,7 @@
 
   make-guest.py KERNEL ADT OUTDIR [--cmdline "..."] [--hw-keyboard]
 
-KERNEL is an ASoftware XNU (ios-sweet/xnu/out-*/kernel.development.sweet), ADT the device tree
+KERNEL is an Kios XNU (ios-sweet/xnu/out-*/kernel.development.sweet), ADT the device tree
 from tools/mkadt.py --qemu --highmem. Builds the SWEETXNU payload (tools/mkpayload.py), turns
 the hardware keyboard off unless --hw-keyboard (patch-softkbd.py: iOS shows its own keyboard),
 and lays it out in RAM as qemu-sweet.py does. Guest.java loads ram.bin at 0x100000000 and

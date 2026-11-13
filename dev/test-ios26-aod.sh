@@ -34,7 +34,7 @@ restore() {
     log "user files back; ios26.txt: $(adb shell cat $EXT/ios26.txt | tr -d '\r' | tr '\n' ' ')"
 }
 trap restore EXIT
-printf '%s\n' "touchlog=1" "env.ASOFT_LAT=1" "dtree=$DTREE" "autosave-maps=999999" "autosave-settle-s=999999" > "$OUT/ios26.in"
+printf '%s\n' "touchlog=1" "env.KIOS_LAT=1" "dtree=$DTREE" "autosave-maps=999999" "autosave-settle-s=999999" > "$OUT/ios26.in"
 adb push "$(cygpath -w "$OUT/ios26.in")" "$EXT/ios26.txt" >/dev/null
 adb shell "am start-foreground-service -n $PKG/com.asoft.ios.GuestService --ez cold true" >/dev/null
 sleep 2

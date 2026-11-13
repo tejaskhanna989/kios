@@ -13,9 +13,9 @@ Run on the mounted root (Data on private/var, root26-do.sh): a cache that does n
 WIDTH x HEIGHT pixels is moved to .stale, and iOS writes a new one at its next boot. Prints one
 line for the app:
 
-    ASOFT: gestalt none               no cache (iOS makes one at its next boot)
-    ASOFT: gestalt kept WxH@S         the cache is this screen's
-    ASOFT: gestalt moved WHY          it was another screen's (or unreadable): moved to .stale
+    KIOS: gestalt none               no cache (iOS makes one at its next boot)
+    KIOS: gestalt kept WxH@S         the cache is this screen's
+    KIOS: gestalt moved WHY          it was another screen's (or unreadable): moved to .stale
 """
 import os
 import plistlib
@@ -44,7 +44,7 @@ def main():
     root, width, height = sys.argv[1], int(sys.argv[2]), int(sys.argv[3])
     path = os.path.join(root, CACHE)
     if not os.path.exists(path):
-        print('ASOFT: gestalt none')
+        print('KIOS: gestalt none')
         return
     try:
         with open(path, 'rb') as f:
@@ -53,10 +53,10 @@ def main():
     except Exception as e:      # a cache nothing here can read is no use to trust
         found, why = [], 'unreadable (%s)' % type(e).__name__
     if any(w == width and h == height for w, h, _ in found):
-        print('ASOFT: gestalt kept ' + why)
+        print('KIOS: gestalt kept ' + why)
         return
     os.replace(path, path + '.stale')
-    print('ASOFT: gestalt moved ' + why)
+    print('KIOS: gestalt moved ' + why)
 
 
 if __name__ == '__main__':

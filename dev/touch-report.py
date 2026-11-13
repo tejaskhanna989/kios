@@ -1,4 +1,4 @@
-# touch-report.py QEMU_STDERR...: from ASOFT_LAT's "LAT in" (an input-send-event QEMU handled: the pending report) and
+# touch-report.py QEMU_STDERR...: from KIOS_LAT's "LAT in" (an input-send-event QEMU handled: the pending report) and
 # "LAT report" (a report the guest read) lines: how long each finger edge (down/up) waited for the guest to read it,
 # the guest's gaps between reads while a finger is down, and edges the guest never saw (the next edge came first).
 import sys, statistics

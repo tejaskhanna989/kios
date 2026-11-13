@@ -1,5 +1,5 @@
 #!/bin/bash
-# test-ios26-rate.sh OUTDIR RATE...: iOS 26 (running in the dev app, ASOFT_LAT=1) — for each RATE (moves a second; "app" = the
+# test-ios26-rate.sh OUTDIR RATE...: iOS 26 (running in the dev app, KIOS_LAT=1) — for each RATE (moves a second; "app" = the
 # app's own path through `input swipe`, ~120/s): Home, Settings, then a 3 s drag up and, 6 s later, a 3 s drag down in its
 # list; counts the frames iOS presents during and after each drag (QEMU's "LAT present" stamps). Screenshots after each drag.
 OUT=${1:?output directory}; shift

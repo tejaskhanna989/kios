@@ -1,6 +1,6 @@
 #!/bin/bash
 # pull-setup.sh [IOS_SWEET]: what the setup from Apple (PhoneSetup) brings, into app/src/main/assets
-# (gitignored, like jniLibs), from an asoft-ios checkout (default ../ios-sweet):
+# (gitignored, like jniLibs), from an kios checkout (default ../ios-sweet):
 #   helper/Image.gz.bin, helper/initrd.gz.bin   the PC installer's helper VM (installer/helper/out, build-*.sh);
 #                                       ".bin": the Android build un-gzips assets named *.gz and drops the suffix
 #   helper/Image16k.gz.bin              its kernel for the native EL0 engine: setup/helper-kernel16k.config;
@@ -27,7 +27,7 @@ if [ "${ONLY:-}" != setup ]; then
     cp "${KERNEL16K:-$src/installer/helper/out/Image16k.gz}" "$a/helper/Image16k.gz.bin"
     cp "$src/xnu/out-0103/kernel.development.sweet" "$a/xnu/"
 fi
-# iOS 26 and watchOS: the shared step bodies and scripts (asoft-ios), the phone's jobs (here); text files only
+# iOS 26 and watchOS: the shared step bodies and scripts (kios), the phone's jobs (here); text files only
 rm -rf "$a/setup/steps" "$a/setup/scripts" "$a/setup/phone"
 for os in ios26 watchos; do
     mkdir -p "$a/setup/steps/$os" "$a/setup/scripts/$os"

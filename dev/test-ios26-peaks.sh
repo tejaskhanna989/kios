@@ -31,7 +31,7 @@ until_picture() {
     done
 }
 maps_now() { rs 'tail -n 1 files/run/maps-sample.txt'; }
-# the phone's boot-time clock before each input, for settle-report.py (with ASOFT_LAT=1 in ios26.txt)
+# the phone's boot-time clock before each input, for settle-report.py (with KIOS_LAT=1 in ios26.txt)
 mark() { echo "$1 $(adb shell cat /proc/uptime | tr -d '\r' | awk '{print $1}')" >> "$OUT/marks.txt"; }
 log "start ($MODE): $(heat | tr '\n' ' ')"
 if [ "$MODE" = running ]; then     # the iOS 26 that runs now

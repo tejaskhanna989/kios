@@ -2,7 +2,7 @@
 # test-ios26-resume.sh OUTDIR [MIN=6]: iOS 26 back from a save made after it settled (test-ios26-settle.sh ends with
 # one): is the guest idle at once, or does the jump in time since the save start background work again? The quick
 # boot, then the input round of test-ios26-settle.sh at ~1 min and again at MIN minutes, the EL shares and, with
-# ASOFT_WHO=1, which address spaces, kernel PCs and syscalls keep the vCPUs busy. Ends with a Save and close.
+# KIOS_WHO=1, which address spaces, kernel PCs and syscalls keep the vCPUs busy. Ends with a Save and close.
 OUT=${1:?output directory}
 MIN=${2:-6}
 PKG=com.asoft.ios.dev
@@ -44,7 +44,7 @@ round() {
 }
 
 [ -z "$(qpid)" ] || { echo "a QEMU of the dev app runs already"; exit 1; }
-printf '%s\n' "env.ASOFT_LAT=1" "env.ASOFT_WHO=1" > "$OUT/ios26.in"
+printf '%s\n' "env.KIOS_LAT=1" "env.KIOS_WHO=1" > "$OUT/ios26.in"
 adb push "$(cygpath -w "$OUT/ios26.in")" "$EXT/ios26.txt" >/dev/null
 log "start: $(heat | tr '\n' ' ')"
 mark start

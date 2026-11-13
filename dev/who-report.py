@@ -1,4 +1,4 @@
-"""who-report.py QEMU_STDERR [FROM_S] [TO_S]: who kept iOS 26's vCPUs busy (QEMU with ASOFT_WHO=1 and ASOFT_EL_SAMPLER).
+"""who-report.py QEMU_STDERR [FROM_S] [TO_S]: who kept iOS 26's vCPUs busy (QEMU with KIOS_WHO=1 and KIOS_EL_SAMPLER).
 
 Sums the sampler's 30 s reports between FROM_S and TO_S (seconds since the first vCPU): the EL shares, the
 address spaces (ASID in TTBR0_EL1; XNU's kernel threads run with 0) by EL0 and EL1 samples (1 kHz per vCPU), the

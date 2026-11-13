@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "about": "ASoftware setup: what every installer (PC: Install-ASoftware.ps1, ios26/Install-iOS26.ps1, watchos/Install-watchOS.ps1, Setup-ASoftware.ps1; phone: the Android app's own setup) downloads from Apple and which steps it runs. Draft 2026-11-08 by the phone-setup session, filled from the scripts in ios-sweet-watch (branch watchos-installer) and from the IPSWs' own central directories (crc32, zipBytes, method). bytes = the member's size once unpacked (what the installers pin today); zipBytes = its size inside the zip when deflated (method 8). GB = 10^9. Since 2026-11-08 (phone-steps / phone-ios26): the Linux step bodies of ios26/Install-iOS26.ps1 and watchos/Install-watchOS.ps1 are files, ios26/steps/NAME.sh and watchos/steps/NAME.sh of asoft-ios, which both PC installers (Step-Body) and the phone's setup read; their {PLACEHOLDERS} come from each OS's vars here. os.*.steps lists the PC steps, each Linux body with the disks (ro/rw/new; at = where the body finds it; overlay = the qcow2 it is made on first), the files in and the files out of its helper-VM run (Run-Linux's -Disks/-In/-Out).",
+  "about": "Kios setup: what every installer (PC: Install-Kios.ps1, ios26/Install-iOS26.ps1, watchos/Install-watchOS.ps1, Setup-Kios.ps1; phone: the Android app's own setup) downloads from Apple and which steps it runs. Draft 2026-11-08 by the phone-setup session, filled from the scripts in ios-sweet-watch (branch watchos-installer) and from the IPSWs' own central directories (crc32, zipBytes, method). bytes = the member's size once unpacked (what the installers pin today); zipBytes = its size inside the zip when deflated (method 8). GB = 10^9. Since 2026-11-08 (phone-steps / phone-ios26): the Linux step bodies of ios26/Install-iOS26.ps1 and watchos/Install-watchOS.ps1 are files, ios26/steps/NAME.sh and watchos/steps/NAME.sh of kios, which both PC installers (Step-Body) and the phone's setup read; their {PLACEHOLDERS} come from each OS's vars here. os.*.steps lists the PC steps, each Linux body with the disks (ro/rw/new; at = where the body finds it; overlay = the qcow2 it is made on first), the files in and the files out of its helper-VM run (Run-Linux's -Disks/-In/-Out).",
   "helper": {
     "files": [
       "installer/helper/out/Image.gz",
@@ -62,12 +62,12 @@
         "sha256": "EE27653106055A6046428465D1CF68F5DFDC1BE5E9B6FFDF402BDD0B6034A8DC"
       },
       "dtFixup": {
-        "url": "https://raw.githubusercontent.com/alpersamur3/qemu-sptm/52f360682d261c03b3db94ced1ce1c8303a96478/scripts/darwin/vresearch_dt_fixup.py",
+        "url": "https://raw.githubusercontent.com/tejaskhanna989/qemu-sptm/52f360682d261c03b3db94ced1ce1c8303a96478/scripts/darwin/vresearch_dt_fixup.py",
         "sha256": "6DE7F5834430322DCBC0D7C09D99AE9B9D7E0A1E1F9C307CC3FF302FCCE5E608"
       },
       "gpuPlugin": {
         "name": "libAppleParavirtCompilerPluginIOGPUFamily.dylib",
-        "url": "https://github.com/alpersamur3/asoft-ios/releases/download/graphicloader-9cadb5c/libAppleParavirtCompilerPluginIOGPUFamily.dylib",
+        "url": "https://github.com/tejaskhanna989/kios/releases/download/graphicloader-9cadb5c/libAppleParavirtCompilerPluginIOGPUFamily.dylib",
         "sha256": "089E725E7733B0B84F5F7821E80DF4E7FC12BD876DD84D753493FA51BD57B8A5"
       },
       "fcsKeys": {
@@ -192,12 +192,12 @@
           "sha256": "EE27653106055A6046428465D1CF68F5DFDC1BE5E9B6FFDF402BDD0B6034A8DC"
         },
         "dtFixup": {
-          "url": "https://raw.githubusercontent.com/alpersamur3/qemu-sptm/52f360682d261c03b3db94ced1ce1c8303a96478/scripts/darwin/vresearch_dt_fixup.py",
+          "url": "https://raw.githubusercontent.com/tejaskhanna989/qemu-sptm/52f360682d261c03b3db94ced1ce1c8303a96478/scripts/darwin/vresearch_dt_fixup.py",
           "sha256": "6DE7F5834430322DCBC0D7C09D99AE9B9D7E0A1E1F9C307CC3FF302FCCE5E608"
         },
         "gpuPlugin": {
           "name": "libAppleParavirtCompilerPluginIOGPUFamily.dylib",
-          "url": "https://github.com/alpersamur3/asoft-ios/releases/download/graphicloader-9cadb5c/libAppleParavirtCompilerPluginIOGPUFamily.dylib",
+          "url": "https://github.com/tejaskhanna989/kios/releases/download/graphicloader-9cadb5c/libAppleParavirtCompilerPluginIOGPUFamily.dylib",
           "sha256": "089E725E7733B0B84F5F7821E80DF4E7FC12BD876DD84D753493FA51BD57B8A5"
         },
         "ipswTool": {
@@ -207,7 +207,7 @@
         },
         "qemuPc": {
           "version": "2026.11.03",
-          "url": "https://github.com/alpersamur3/qemu-sptm/releases/download/asoft-7364c4e/asoft-qemu-2026.11.03.zip",
+          "url": "https://github.com/tejaskhanna989/qemu-sptm/releases/download/asoft-7364c4e/asoft-qemu-2026.11.03.zip",
           "sha256": "C0D48F95ABEB467D8AFDE898BF2987123C60F19D62CFC8400C446F0569E4D5C2"
         }
       },
@@ -795,13 +795,13 @@
       "note": "PC: the Linux steps run in WSL (no helper mode). The phone runs rootfs, patches, trustcache and activation in the helper VM (mk-rootw.sh takes a block device as OUT since phone-steps), decrypt, kernel and devicetree in Java (Unpack) and gpu-driver from the shared folder"
     },
     "ios12": {
-      "title": "iOS 12 (iPhone 6s/7/8 class)",
-      "build": "16H5",
+      "title": "iOS 12.5.7 (iPhone 8 / iPhone10,1)",
+      "build": "16H81",
       "needs": [],
       "sources": {
         "ipsw": {
-          "url": "PLACEHOLDER: replace with real iOS 12 IPSW URL from Apple",
-          "bytes": 2500000000,
+          "url": "https://updates.cdn-apple.com/2019FallFCS/fullrestores/001-83828/A45E35B2-C4E7-11E9-9918-19610AD8B7A1/iPhone_4.7_12.5.7_16H81_Restore.ipsw",
+          "bytes": 2900000000,
           "members": [
             {
               "name": "BuildManifest.plist",
@@ -814,7 +814,7 @@
             {
               "name": "022-XXXXX-XXX.dmg",
               "role": "OS",
-              "bytes": 2000000000,
+              "bytes": 2200000000,
               "method": 0,
               "crc32": "PLACEHOLDER"
             },
@@ -827,12 +827,12 @@
               "crc32": "PLACEHOLDER"
             }
           ],
-          "note": "PLACEHOLDER: replace with real iOS 12 IPSW details"
+          "note": "iPhone 8 (iPhone10,1) iOS 12.5.7 (16H81). Verify exact filenames inside the IPSW."
         }
       },
       "kernel": {
         "from": "xnu/kernel.development.sweet",
-        "note": "our XNU build"
+        "note": "our XNU build for iOS 12"
       },
       "bootArgs": "debug=0xc serial=3 cpus=2 keepsyms=1 -noprogress rd=disk0s1 wdt=-1 keepsyms=1 launchd_unsecure_cache=1 launchd_disable_all_timeouts=1 ignition_level=1 wdt=-1",
       "steps": [

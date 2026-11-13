@@ -3,9 +3,9 @@
 # (the user's iOS 26 disk is put aside for it and back afterwards):
 #   1  cache=none (O_DIRECT) again: boot to the lock screen, unlock, home screen; the disk's failed writes and
 #      the guest's I/O errors (before the QEMU fix a third of the writes failed), then Save and close
-#   2  a load as if the phone had restarted since the save (ASOFT_HOST_COUNTER_TEST_BASE: the host's counter
+#   2  a load as if the phone had restarted since the save (KIOS_HOST_COUNTER_TEST_BASE: the host's counter
 #      seen from near 0): the counter goes on from the save (offset), iOS lives, Calculator opens; Save and close
-#   3  the same load with the offset off (ASOFT_HOST_COUNTER_NO_RESUME=1), the behaviour before the fix:
+#   3  the same load with the offset off (KIOS_HOST_COUNTER_NO_RESUME=1), the behaviour before the fix:
 #      XNU's sched_clutch panic expected
 #   4  the user's disk back
 # PHASES: which of them, "1234" by default. Every input goes through guarded.sh (the app's screen on top).
@@ -100,7 +100,7 @@ case $PHASES in *1*)
 
 case $PHASES in *2*)
     B=$(( $(host_ticks) - 120 * 19200000 ))
-    ios26txt "cache=none" "env.ASOFT_HOST_COUNTER_TEST_BASE=$B"
+    ios26txt "cache=none" "env.KIOS_HOST_COUNTER_TEST_BASE=$B"
     log "f2: test base $B (the host's counter seen from ~120 s)"
     T0=$(date +%s)
     start_guest quick
@@ -121,7 +121,7 @@ case $PHASES in *2*)
 
 case $PHASES in *3*)
     B=$(( $(host_ticks) - 120 * 19200000 ))
-    ios26txt "cache=none" "env.ASOFT_HOST_COUNTER_TEST_BASE=$B" "env.ASOFT_HOST_COUNTER_NO_RESUME=1"
+    ios26txt "cache=none" "env.KIOS_HOST_COUNTER_TEST_BASE=$B" "env.KIOS_HOST_COUNTER_NO_RESUME=1"
     log "f3: test base $B, no resume (the behaviour before the fix)"
     T0=$(date +%s)
     start_guest quick

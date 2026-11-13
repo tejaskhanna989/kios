@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace 'com.asoft.ios'
+    namespace 'com.kios.ios'
     compileSdk 36
     ndkVersion '29.0.13846066'
     defaultConfig {
-        applicationId 'com.asoft.ios'
+        applicationId 'com.kios.ios'
         minSdk 29
         targetSdk 35
         versionCode 7
@@ -15,10 +15,10 @@ android {
         ndk { abiFilters 'arm64-v8a' }
     }
     // The release key stays out of the repository: a properties file (storeFile, storePassword,
-    // keyAlias, keyPassword) at $ASOFT_SIGNING, else ~/.android/asoft-ios-release.properties.
+    // keyAlias, keyPassword) at $KIOS_SIGNING, else ~/.android/kios-release.properties.
     // Without it the release APK is unsigned.
     def signingProps = new Properties()
-    def signingFile = file(System.getenv('ASOFT_SIGNING') ?: "${System.getProperty('user.home')}/.android/asoft-ios-release.properties")
+    def signingFile = file(System.getenv('KIOS_SIGNING') ?: "${System.getProperty('user.home')}/.android/kios-release.properties")
     if (signingFile.exists()) {
         signingFile.withInputStream { signingProps.load(it) }
     }
@@ -41,8 +41,8 @@ android {
         // the test services and the screen take adb's intents in a debug build only
         debug {
             manifestPlaceholders = [testExported: 'true']
-            // -PasoftDev: com.asoft.ios.dev, installed beside the release app and its iPhone
-            if (project.hasProperty('asoftDev')) {
+            // -PkiosDev: com.kios.ios.dev, installed beside the release app and its iPhone
+            if (project.hasProperty('kiosDev')) {
                 applicationIdSuffix '.dev'
                 versionNameSuffix '-dev'
             }

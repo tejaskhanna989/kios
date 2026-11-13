@@ -39,7 +39,7 @@ if [ "$WHAT" = start ]; then
         log "trust cache root26m.tc = $TC for the test"
     fi
     # DTREE=auto: no dtree line, the app picks the tree (and trust cache) from the disk's base
-    printf '%s\n' "touchlog=1" "env.ASOFT_LAT=1" "console=socket" "autosave-maps=999999" "autosave-settle-s=999999" \
+    printf '%s\n' "touchlog=1" "env.KIOS_LAT=1" "console=socket" "autosave-maps=999999" "autosave-settle-s=999999" \
         > "$OUT/ios26.in"
     [ "$DTREE" = auto ] || echo "dtree=$DTREE" >> "$OUT/ios26.in"
     adb push "$(cygpath -w "$OUT/ios26.in")" "$EXT/ios26.txt" > /dev/null

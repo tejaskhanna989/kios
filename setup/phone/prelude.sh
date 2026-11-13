@@ -3,15 +3,15 @@
 # Install-iOS26.ps1's Helper-Prelude gives a step body (the folders and disk_tools, in_root, overlay, fresh,
 # as the helper VM has them: the disks are QEMU's, linked where the files would be; the host made the
 # overlays before the VM started), and what the phone adds:
-#   step NAME      runs the shared body steps/NAME.sh (ios26/steps or watchos/steps of asoft-ios, its
+#   step NAME      runs the shared body steps/NAME.sh (ios26/steps or watchos/steps of kios, its
 #                  {PLACEHOLDERS} filled by the app from asoft-setup.json)
 #   progress N T   a line for the setup screen
 #   the scratch disk (serial scratch, when the job has one): ext4, for the folders .job/scratch names,
 #                  which are too big for /work (job-run.sh's RAM folder)
-# Set by the app above this: ASOFT_S, the scripts folder (scripts, or watchos/scripts for the watch).
+# Set by the app above this: KIOS_S, the scripts folder (scripts, or watchos/scripts for the watch).
 set -euo pipefail
-export ASOFT26=/work ASOFT26_LINUX=/root/ios26
-A=$ASOFT26 L=$ASOFT26_LINUX S=$ASOFT26/${ASOFT_S:-scripts} W=$ASOFT26/watchos
+export KIOS26=/work KIOS26_LINUX=/root/ios26
+A=$KIOS26 L=$KIOS26_LINUX S=$KIOS26/${KIOS_S:-scripts} W=$KIOS26/watchos
 export A L S W
 mkdir -p "$L"
 cd "$A"
@@ -34,7 +34,7 @@ step() {
 	echo "== step $1"
 	. "$A/steps/$1.sh"
 }
-progress() { echo "ASOFT: progress $1 $2"; }
+progress() { echo "KIOS: progress $1 $2"; }
 # copy_watch MOUNT WANT_KB TEXT &: progress lines while a step copies an OS onto the disk mounted at MOUNT, from
 # what is on it so far against WANT_KB (what the copy ends at, measured). The copy is one rsync of half an
 # hour that prints nothing: without these the setup screen stood at 2 % all that time and read as stuck
@@ -49,7 +49,7 @@ copy_watch() {
 		[ "$pct" -le 95 ] || pct=95
 		[ "$pct" -ge "$last" ] || pct=$last
 		last=$pct
-		echo "ASOFT: progress $pct $text ($((used / 1048576)).$((used % 1048576 * 10 / 1048576)) GB so far)"
+		echo "KIOS: progress $pct $text ($((used / 1048576)).$((used % 1048576 * 10 / 1048576)) GB so far)"
 	done
 }
 # the new CDHash a dsc-patch.py run printed ("NAME OLD NEW"), edge-patch.py's ("NAME NEW ...")

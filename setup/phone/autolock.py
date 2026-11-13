@@ -14,9 +14,9 @@ Run on the mounted root (Data on private/var, root26-do.sh): the folder (and Pub
 goes to mobile, and profiled writes the effective settings at the next boot. Prints one line for
 the app:
 
-    ASOFT: autolock none              no such folder (iOS makes it itself)
-    ASOFT: autolock ok                the folder is mobile's already
-    ASOFT: autolock fixed UID:GID     it was UID:GID's: now mobile's
+    KIOS: autolock none              no such folder (iOS makes it itself)
+    KIOS: autolock ok                the folder is mobile's already
+    KIOS: autolock fixed UID:GID     it was UID:GID's: now mobile's
 """
 import os
 import sys
@@ -30,7 +30,7 @@ def main():
         sys.exit(__doc__)
     d = os.path.join(sys.argv[1], FOLDER)
     if not os.path.isdir(d):
-        print('ASOFT: autolock none')
+        print('KIOS: autolock none')
         return
     was = None
     for p in (d, os.path.join(d, 'PublicInfo')):
@@ -41,7 +41,7 @@ def main():
             was = was or '%d:%d' % (st.st_uid, st.st_gid)
             os.chown(p, MOBILE, MOBILE)
             os.chmod(p, 0o755)
-    print('ASOFT: autolock fixed ' + was if was else 'ASOFT: autolock ok')
+    print('KIOS: autolock fixed ' + was if was else 'KIOS: autolock ok')
 
 
 if __name__ == '__main__':

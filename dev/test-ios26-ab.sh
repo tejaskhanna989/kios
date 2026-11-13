@@ -1,7 +1,7 @@
 #!/bin/bash
 # test-ios26-ab.sh OUTDIR [ios26.txt line ...]: one arm of an A/B on iOS 26 in the dev app: the user's quick save
 # loaded (test-ios26-peaks.sh quick: one unlock, then rounds of six apps, ended with the app's off, so the save stays
-# as it was), with reims' frame stamps (ASOFT_LAT=1) and the given ios26.txt lines (adpf=1, ...). Beside it once a
+# as it was), with reims' frame stamps (KIOS_LAT=1) and the given ios26.txt lines (adpf=1, ...). Beside it once a
 # second the GPU's clock and busy counters and the big and little cores' clocks. settle-report.py turns the stamps
 # into first-reaction and settle times per input; gpu.txt sums the GPU clocks over the rounds.
 OUT=${1:?output directory}
@@ -18,7 +18,7 @@ T=$(date +%s)
 while { [ "$(hot)" -gt $((${COOL:-55} * 1000)) ] || [ "$(batt)" -gt $((${BATT:-37} * 10)) ]; } && [ $(($(date +%s) - T)) -lt 900 ]; do sleep 20; done
 echo "cooled $(($(date +%s) - T)) s: hottest CPU $(hot), battery $(batt)" > "$OUT/cool.txt"
 # autosave-maps high: AutoSave's guard must not save a test's state over the user's quick save
-printf '%s\n' "env.ASOFT_LAT=1" "autosave-maps=999999" "$@" > "$OUT/ios26.in"
+printf '%s\n' "env.KIOS_LAT=1" "autosave-maps=999999" "$@" > "$OUT/ios26.in"
 adb push "$(cygpath -w "$OUT/ios26.in")" "$EXT/ios26.txt" >/dev/null
 adb shell 'nohup sh -c "end=\$((\$(date +%s) + 1200)); while [ \$(date +%s) -lt \$end ]; do echo \"\$(date +%s) \$(cat /sys/class/kgsl/kgsl-3d0/devfreq/cur_freq) \$(cat /sys/class/kgsl/kgsl-3d0/gpubusy) \$(cat /sys/devices/system/cpu/cpu7/cpufreq/scaling_cur_freq) \$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq)\"; sleep 1; done" > /data/local/tmp/asoft/gpu-ab.txt 2>&1 &'
 bash "$HERE/test-ios26-peaks.sh" "$OUT" quick 30 "${ROUNDS:-2}" > "$OUT/run-peaks.log" 2>&1

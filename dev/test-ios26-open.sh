@@ -18,7 +18,7 @@ batt() { adb shell "dumpsys battery | grep -m1 '^  temperature'" | tr -d '\r' | 
 T=$(date +%s)
 while { [ "$(hot)" -gt $((${COOL:-55} * 1000)) ] || [ "$(batt)" -gt $((${BATT:-37} * 10)) ]; } && [ $(($(date +%s) - T)) -lt 900 ]; do sleep 20; done
 echo "cooled $(($(date +%s) - T)) s: hottest CPU $(hot), battery $(batt)" | tee "$OUT/cool.txt"
-printf '%s\n' "env.ASOFT_LAT=1" "autosave-maps=999999" "$@" > "$OUT/ios26.in"
+printf '%s\n' "env.KIOS_LAT=1" "autosave-maps=999999" "$@" > "$OUT/ios26.in"
 adb push "$(cygpath -w "$OUT/ios26.in")" "$EXT/ios26.txt" >/dev/null
 adb shell "am start-foreground-service -n $PKG/com.asoft.ios.GuestService" >/dev/null
 nap 2

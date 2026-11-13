@@ -4,7 +4,7 @@
 # cold), waits for the lock screen, flicks it open 20 s later, taps Calculator 60 s after that, the side bar's
 # Home 20 s later, then the app's off. What the run differs in goes in the app's ios26.txt beforehand.
 # OUTDIR gets bench.txt, marks.txt (boot-time clock before each input), heat.txt (every 10 s: uptime,
-# battery, hottest CPU zone, small/big core ceilings), screenshots and the run's logs; with ASOFT_LAT=1 in
+# battery, hottest CPU zone, small/big core ceilings), screenshots and the run's logs; with KIOS_LAT=1 in
 # ios26.txt, bench-report.py turns reims' frame stamps into the unlock/Calculator/Home times.
 OUT=${1:?output directory}
 PKG=com.asoft.ios.dev

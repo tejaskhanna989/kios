@@ -35,7 +35,7 @@ for arm in $ARMS; do
             16) ;;
             *) printf 'env.METAL2VULKAN_GATHER_CHUNK_MIB=%s\n' "$arm" ;;
         esac
-        [ "${LAT:-1}" = 1 ] && printf 'env.ASOFT_LAT=1\n'
+        [ "${LAT:-1}" = 1 ] && printf 'env.KIOS_LAT=1\n'
     } > "$A/ios26.in"
     [ "${FRESH:-1}" = 1 ] && new_disk
     put_txt "$A/ios26.in"

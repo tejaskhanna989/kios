@@ -70,7 +70,7 @@ public final class PairTest {
 
     private static void self(File dir) throws Exception {
         AdbKey phone = AdbKey.of(new File(dir, "phone")), app = AdbKey.of(new File(dir, "app"));
-        String line = app.publicLine("ASoftware-iOS");
+        String line = app.publicLine("Kios-iOS");
 
         for (String typed : new String[] {"123456", "654321"}) {
             try (ServerSocket s = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) {
@@ -85,7 +85,7 @@ public final class PairTest {
                 t.start();
                 String result;
                 try {
-                    result = "paired, phone " + AdbPairing.pair(app, "ASoftware-iOS", "127.0.0.1", s.getLocalPort(), typed);
+                    result = "paired, phone " + AdbPairing.pair(app, "Kios-iOS", "127.0.0.1", s.getLocalPort(), typed);
                 } catch (AdbPairing.WrongCode e) {
                     result = "wrong code";
                 }

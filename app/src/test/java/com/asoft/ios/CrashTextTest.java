@@ -1,4 +1,4 @@
-package com.asoft.ios;
+package com.kios.ios;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -211,7 +211,7 @@ public class CrashTextTest {
         assertTrue(b, b.contains("| App | 0.1.2 \\| dev |"));
         assertTrue(b, b.contains("a ''' b"));
         assertFalse(b, b.contains("shortened"));
-        assertTrue(b, b.endsWith("_Written by ASoftware's crash report; nothing was sent by itself._\n"));
+        assertTrue(b, b.endsWith("_Written by Kios's crash report; nothing was sent by itself._\n"));
     }
 
     @Test
@@ -250,8 +250,8 @@ public class CrashTextTest {
         }
         String title = "iOS 26: renderCommandEncoderWithDescriptor:: BGR10_XR (552)";
         String cause = CrashText.cause(FATAL_552, Collections.singletonList(FATAL_552), 6);
-        String b = CrashText.fitBody("alpersamur3/asoft-ios-android", title, facts, "iOS 26 crashed", FATAL_552, err, app, 7000);
-        String url = CrashText.issueUrl("alpersamur3/asoft-ios-android", title, b);
+        String b = CrashText.fitBody("tejaskhanna989/kios-android", title, facts, "iOS 26 crashed", FATAL_552, err, app, 7000);
+        String url = CrashText.issueUrl("tejaskhanna989/kios-android", title, b);
         assertTrue(url.length() + " > 7000", url.length() <= 7000);
         assertTrue(url.length() + " is far below 7000", url.length() > 6000);
         assertTrue(b.contains(FATAL_552));
@@ -365,7 +365,7 @@ public class CrashTextTest {
     @Test
     public void recordRoundTrip() {
         LinkedHashMap<String, List<String>> s = new LinkedHashMap<>();
-        s.put("helper console", Arrays.asList("ASOFT: progress 2 unpacking", "== asoft: not a section ==", ""));
+        s.put("helper console", Arrays.asList("KIOS: progress 2 unpacking", "== asoft: not a section ==", ""));
         s.put(CrashText.RUN_APPLOG, Collections.singletonList("11-12 10:15:00 setup: begin"));
         List<String> lines = CrashText.recordLines(header(), s, 200_000);
         assertEquals(CrashText.MAGIC + " 1", lines.get(0));
@@ -375,7 +375,7 @@ public class CrashTextTest {
         assertEquals("setup", p.header.get("kind"));
         assertEquals(Arrays.asList("helper console", CrashText.RUN_APPLOG), new ArrayList<>(p.sections.keySet()));
         // a log line that looks like a section's header stays in its section, with a space before it
-        assertEquals(Arrays.asList("ASOFT: progress 2 unpacking", " == asoft: not a section ==", ""), p.sections.get("helper console"));
+        assertEquals(Arrays.asList("KIOS: progress 2 unpacking", " == asoft: not a section ==", ""), p.sections.get("helper console"));
         assertNull(CrashText.parseRecord(Arrays.asList("not a record", "kind: x")));
         assertNull(CrashText.parseRecord(Collections.<String>emptyList()));
     }

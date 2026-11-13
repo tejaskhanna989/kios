@@ -30,7 +30,7 @@ def main(d):
         if m:
             el.append(tuple(float(x) for x in m.groups()))
     if offset is None:
-        print('no LAT clocks line: was ASOFT_LAT=1 set?')
+        print('no LAT clocks line: was KIOS_LAT=1 set?')
         return
     frames = [(t + offset, f) for t, f in frames]
     changes = [t for t, f in frames if f >= 0.01]

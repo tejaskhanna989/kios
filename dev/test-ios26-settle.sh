@@ -2,7 +2,7 @@
 # test-ios26-settle.sh OUTDIR [IDLE_MIN=60]: is iOS 26 slow only while it settles after a boot (PROMPT-APP 2026-11-05
 # §4a)? A boot of the user's disk in the dev app, the same input set at ~5 min and again after IDLE_MIN minutes left
 # alone (the display sleeps), each three times: the unlock flick, Calculator open, the side bar's Home, volume up
-# (iOS's HUD), a page swipe on the home screen. ios26.txt turns on reims' frame stamps (ASOFT_LAT) and the BQL
+# (iOS's HUD), a page swipe on the home screen. ios26.txt turns on reims' frame stamps (KIOS_LAT) and the BQL
 # report; settle-report.py turns marks.txt + the stamps into first-reaction and settle times. Beside it once a
 # second the QEMU's kernel mappings (maps-sample.sh: reims' views against vm.max_map_count) and every 10 s the heat.
 # Ends with a Save and close: a settled quick save for daily use.
@@ -53,7 +53,7 @@ batt() { adb shell "dumpsys battery | grep -m1 '^  temperature'" | tr -d '\r' | 
 T=$(date +%s)
 while [ "$(batt)" -gt $((${BATT:-37} * 10)) ] && [ $(($(date +%s) - T)) -lt 900 ]; do sleep 20; done
 log "cooled $(($(date +%s) - T)) s"
-printf '%s\n' "env.ASOFT_LAT=1" "env.ASOFT_BQLPROF=1" > "$OUT/ios26.in"
+printf '%s\n' "env.KIOS_LAT=1" "env.KIOS_BQLPROF=1" > "$OUT/ios26.in"
 adb push "$(cygpath -w "$OUT/ios26.in")" "$EXT/ios26.txt" >/dev/null
 log "start: $(heat | tr '\n' ' '), free $(adb shell df -h /data | tail -n 1 | awk '{print $4}')"
 adb shell 'while true; do echo "$(cut -d" " -f1 /proc/uptime) $(dumpsys battery | grep -m1 "^  temperature" | tr -s " " | cut -d" " -f3) $(for z in /sys/class/thermal/thermal_zone*; do case $(cat $z/type) in cpu-*-*) cat $z/temp;; esac; done | sort -n | tail -n 1) $(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq) $(cat /sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq)"; sleep 10; done' > "$OUT/heat.txt" &

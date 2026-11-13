@@ -18,8 +18,8 @@ PREFS = 'private/var/mobile/Library/Preferences/.GlobalPreferences.plist'
 
 
 def say(text):
-    # ASOFT: lines reach the app (Helper), which puts these into its log
-    print('ASOFT: ' + text, flush=True)
+    # KIOS: lines reach the app (Helper), which puts these into its log
+    print('KIOS: ' + text, flush=True)
 
 
 def inside(R, path, depth=0):
