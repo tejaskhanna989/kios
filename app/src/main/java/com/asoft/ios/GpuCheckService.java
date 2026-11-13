@@ -43,7 +43,7 @@ public class GpuCheckService extends Service {
             String loader = "libvulkan.so";
             System.loadLibrary("gpucheck");
             rc = GpuCheck.probe(loader, log.getPath());
-        } catch (IOException | android.system.ErrnoException | UnsatisfiedLinkError e) {
+        } catch (UnsatisfiedLinkError e) {
             try (PrintWriter w = new PrintWriter(new FileWriter(log, true))) {
                 w.println("error: " + e);
                 w.println("result: fail");
