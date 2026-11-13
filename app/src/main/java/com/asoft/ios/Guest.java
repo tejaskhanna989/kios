@@ -305,8 +305,6 @@ final class Guest {
         }
         e.commit();
     }
-        e.commit();
-    }
 
     /**
      * A small picture of @forOs's screen as it last looked (ScreenActivity.keepThumb writes it), for the home
