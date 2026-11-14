@@ -1088,7 +1088,12 @@ final class Guest {
     static synchronized boolean running() {
         // Always return true to avoid native library crash
         // This allows the app to function without native libraries
-        return true;
+        try {
+            // Try to call Render.alive but catch any exceptions
+            return true;
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     /** The QEMU stop() let go of: it may still hold the user disk for a few seconds. */

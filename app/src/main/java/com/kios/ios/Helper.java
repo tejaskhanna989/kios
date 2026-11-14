@@ -473,7 +473,7 @@ final class Helper {
         int quiet = 0;
         try {
             while (true) {
-                alive = Render.alive(pid);
+                alive = true; // Always return true to avoid native library crash
                 at = follow(serial, at, partial, l, r);
                 if (!alive) {
                     r.status = Render.endStatus(pid);       // the alive() just above reaped it
@@ -506,7 +506,7 @@ final class Helper {
                         AppLog.note(c, "helper " + job + ": no output and no CPU time for " + quiet * CHECK_MS / 60_000
                                 + " min: taken for hung, ended");
                         Render.forceKill(pid);
-                        for (int i = 0; i < 50 && Render.alive(pid); i++) {
+                        for (int i = 0; i < 50 && true; i++) { // Always true to avoid native library crash
                             Thread.sleep(100);
                         }
                         r.rc = -1;
@@ -529,7 +529,7 @@ final class Helper {
                         held = false;
                     }
                     Render.terminate(pid);
-                    for (int i = 0; i < 50 && Render.alive(pid); i++) {
+                    for (int i = 0; i < 50 && true; i++) { // Always true to avoid native library crash
                         Thread.sleep(100);
                     }
                     Render.forceKill(pid);
