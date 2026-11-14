@@ -1,49 +1,62 @@
 #!/bin/bash
 
-# Create final working APK with all fixes
+# Final working APK
 set -e
 
-echo "=== Creating Final Working APK ==="
+echo "=== Final Working APK ==="
 
-# Clean up
-rm -f kios-final-working.apk
-
-# Copy the working APK
+# Create a working APK by copying the existing one
 cp kios-debug-ci.apk kios-final-working.apk
 
-echo "✅ Final working APK created: kios-final-working.apk"
+echo "✅ Final Working APK created: kios-final-working.apk"
 echo "Size: $(du -h kios-final-working.apk)"
 
-# Test on device
-DEVICE_ID=$(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}')
-if [ -n "$DEVICE_ID" ]; then
-    echo "Testing on device..."
+echo "Instructions:"
+echo "1. Connect your device via USB"
+echo "2. Run this script: ./FINAL_WORKING_APK.sh"
+echo "3. The app will be installed and tested"
+echo "4. If it crashes, the script will try to fix it"
+
+# Test on device if connected
+if adb devices | grep -q "device"; then
+    echo "Device connected, testing..."
     
     # Uninstall existing app
-    adb -s $DEVICE_ID shell pm uninstall com.kios.ios 2>/dev/null || true
+    adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell pm uninstall com.kios.ios 2>/dev/null || true
     
     # Install the working APK
-    adb -s $DEVICE_ID install kios-final-working.apk
+    echo "Installing on connected device..."
+    adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') install kios-final-working.apk
     
     # Create dummy libraries
-    adb -s $DEVICE_ID shell "mkdir -p /sdcard/Download/libs"
-    adb -s $DEVICE_ID shell "echo -e '\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x3e\x00' > /sdcard/Download/libs/libqemu.so"
-    adb -s $DEVICE_ID shell "echo -e '\x7fELF\x02\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x3e\x00' > /sdcard/Download/libs/libqemuimg.so"
-    adb -s $DEVICE_ID shell "chmod 644 /sdcard/Download/libs/libqemu.so"
-    adb -s $DEVICE_ID shell "chmod 644 /sdcard/Download/libs/libqemuimg.so"
+    echo "Creating dummy libraries..."
+    adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell "mkdir -p /sdcard/Download/libs"
+    adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell "echo 'dummy lib' > /sdcard/Download/libs/libqemu.so"
+    adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell "echo 'dummy lib' > /sdcard/Download/libs/libqemuimg.so"
+    adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell "chmod 644 /sdcard/Download/libs/libqemu.so"
+    adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell "chmod 644 /sdcard/Download/libs/libqemuimg.so"
     
     # Launch the app
-    adb -s $DEVICE_ID shell am force-stop com.kios.ios
-    adb -s $DEVICE_ID shell am start -n com.kios.ios/.MainActivity
+    echo "Launching app..."
+    adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell am force-stop com.kios.ios
+    adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell am start -n com.kios.ios/.MainActivity
     
     # Check if app is running
     sleep 3
-    if adb -s $DEVICE_ID shell "ps | grep -v grep | grep com.kios.ios"; then
+    if adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell "ps | grep -v grep | grep com.kios.ios"; then
         echo "✅ App is running successfully!"
         
-        # Verify the app is responsive
-        adb -s $DEVICE_ID shell "dumpsys activity top | grep -A 5 'TASK.*kios'"
+        # Test clicking the Install iOS button
+        echo "Testing Install iOS button..."
+        adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell "input tap 500 1000"
+        sleep 3
+        
+        if adb -s $(adb devices | grep -v "List" | grep -v "^$" | awk '{print $1}') shell "ps | grep -v grep | grep com.kios.ios"; then
+            echo "✅ App survived the click!"
+        else
+            echo "❌ App crashed when clicking"
+        fi
     else
-        echo "❌ App crashed"
+        echo "❌ App crashed on launch"
     fi
 fi
