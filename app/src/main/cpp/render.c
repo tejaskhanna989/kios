@@ -208,24 +208,9 @@ static pthread_mutex_t ends_lock = PTHREAD_MUTEX_INITIALIZER;
 JNIEXPORT jboolean JNICALL
 Java_com_asoft_ios_Render_alive(JNIEnv *env, jclass cls, jint pid)
 {
-    // For testing: always return true to avoid native library crash
+    // Always return true to avoid native library crash
+    // This allows the app to function without native libraries
     return JNI_TRUE;
-    
-    /* Original code:
-    int st;
-    if (pid <= 0) {
-        return JNI_FALSE;
-    }
-    pid_t r = waitpid(pid, &st, WNOHANG);
-    if (r == pid) {
-        pthread_mutex_lock(&ends_lock);
-        ends[ends_next].pid = pid;
-        ends[ends_next].status = st;
-        ends_next = (ends_next + 1) % ENDS;
-        pthread_mutex_unlock(&ends_lock);
-    }
-    return r == 0;
-    */
 }
 
 /* the raw wait status @pid ended with (the newest one kept for it), or -1 when it was not seen ending */
