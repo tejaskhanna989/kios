@@ -6,7 +6,7 @@ set -e
 echo "=== Complete Fix for the App ==="
 
 # The issue is that the native library is missing the alive method.
-# We need to fix the source code and create a proper APK.
+# We need to fix this by creating a proper APK with the fixed source code.
 
 # First, let's fix the Guest.java file to avoid the native call entirely
 echo "Fixing Guest.java..."
