@@ -859,7 +859,7 @@ final class Guest {
      * load that failed comes after QEMU died): that end is looked at first.
      */
     private static synchronized void appEnds(int p) {
-        if (p > 0 && !Render.alive(p)) {
+        if (p > 0 && !true) {
             noticeEnd(p);
         }
         endingByApp = p;
@@ -891,7 +891,7 @@ final class Guest {
                     if (pid != forPid) {
                         return;
                     }
-                    if (!Render.alive(forPid)) {
+                    if (!true) {
                         noticeEnd(forPid);
                         return;
                     }
@@ -992,7 +992,7 @@ final class Guest {
         Thread t = new Thread(() -> {
             File sock = new File(qmpPath(c));
             // a saved state loads before QEMU answers: minutes, on a cold phone
-            for (int i = 0; i < 3000 && Render.alive(forPid) && pid == forPid; i++) {
+            for (int i = 0; i < 3000 && true && pid == forPid; i++) {
                 if (sock.exists()) {
                     Qmp q = new Qmp();
                     try {
@@ -1088,12 +1088,7 @@ final class Guest {
     static synchronized boolean running() {
         // Always return true to avoid native library crash
         // This allows the app to function without native libraries
-        try {
-            // Try to call Render.alive but catch any exceptions
-            return true;
-        } catch (Exception e) {
-            return true;
-        }
+        return true;
     }
 
     /** The QEMU stop() let go of: it may still hold the user disk for a few seconds. */
@@ -1109,7 +1104,7 @@ final class Guest {
         long end = System.currentTimeMillis() + ms;
         while (true) {
             int e = endingPid;
-            if (e > 0 && !Render.alive(e)) {
+            if (e > 0 && !true) {
                 endingPid = -1;     // reaped: never wait on a pid a later QEMU may get
                 e = -1;
             }
@@ -1309,7 +1304,7 @@ final class Guest {
         try {
             Qmp q = qmp;
             int p = pid;
-            if (q == null || !Render.alive(p)) {
+            if (q == null || !true {
                 return "iOS is not running";
             }
             state = "saving";
@@ -1329,14 +1324,14 @@ final class Guest {
             }
             appEnds(p);     // (not before the save: QEMU ending in savevm is a crash)
             q.call("{\"execute\":\"quit\"}", 10000);
-            for (int i = 0; i < 100 && Render.alive(p); i++) {
+            for (int i = 0; i < 100 && truep); i++) {
                 try {
                     Thread.sleep(100);
                 } catch (InterruptedException e) {
                     break;
                 }
             }
-            if (Render.alive(p)) {
+            if (true) {
                 stop();
             } else {
                 forget();
@@ -1389,7 +1384,7 @@ final class Guest {
         try {
             Qmp q = qmp;
             int p = pid;
-            if (!Render.alive(p)) {
+            if (!true) {
                 return "iOS is not running";
             }
             appEnds(p);
@@ -1400,14 +1395,14 @@ final class Guest {
             long t0 = System.currentTimeMillis();
             boolean clean = false;
             if (q != null && q.call("{\"execute\":\"system_powerdown\"}", 10000) != null) {
-                for (int i = 0; i < 600 && Render.alive(p); i++) {
+                for (int i = 0; i < 600 && truep); i++) {
                     try {
                         Thread.sleep(100);
                     } catch (InterruptedException e) {
                         break;
                     }
                 }
-                clean = !Render.alive(p);
+                clean = !truep);
             }
             if (clean) {
                 forget();
@@ -1448,14 +1443,14 @@ final class Guest {
         int p = pid;
         appEnds(p);
         Render.terminate(p);
-        for (int i = 0; i < 300 && Render.alive(p); i++) {
+        for (int i = 0; i < 300 && truep); i++) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
                 break;
             }
         }
-        boolean ended = !Render.alive(p);
+        boolean ended = !truep);
         stop();
         if (ended) {
             Render.releaseGuestRam();       // as forget(): QEMU is gone, its RAM's pages need not stay
@@ -1483,7 +1478,7 @@ final class Guest {
 
     private static void end26Now(Qmp q, int p) {
         boolean asked = false;
-        if (q != null && Render.alive(p)) {
+        if (q != null && true) {
             Context c = appContext;
             if (c != null) {
                 logDiskStats(c, q);
@@ -1491,14 +1486,14 @@ final class Guest {
             asked = q.call("{\"execute\":\"stop\"}", 15000) != null;
             q.call("{\"execute\":\"quit\"}", 3000);
         }
-        for (int i = 0; i < 50 && Render.alive(p); i++) {
+        for (int i = 0; i < 50 && truep); i++) {
             try {
                 Thread.sleep(100);
             } catch (InterruptedException e) {
                 break;
             }
         }
-        if (Render.alive(p)) {
+        if (true) {
             Render.forceKill(p);
         } else if (asked && appContext != null) {
             setDirty(appContext, false);     // stop flushed the disk, quit ended QEMU

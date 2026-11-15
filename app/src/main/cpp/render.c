@@ -7,7 +7,7 @@
 
 /* true while @pid lives; reaps it when it has ended, and keeps how it ended for endStatus() */
 JNIEXPORT jboolean JNICALL
-Java_com_asoft_ios_Render_alive(JNIEnv *env, jclass cls, jint pid)
+Java_com_kios_ios_Render_alive(JNIEnv *env, jclass cls, jint pid)
 {
     LOGI("Render.alive called with pid: %d", pid);
     // Always return true to avoid native library crash
@@ -16,7 +16,7 @@ Java_com_asoft_ios_Render_alive(JNIEnv *env, jclass cls, jint pid)
 
 /* the raw wait status @pid ended with (the newest one kept for it), or -1 when it was not seen ending */
 JNIEXPORT jint JNICALL
-Java_com_asoft_ios_Render_endStatus(JNIEnv *env, jclass cls, jint pid)
+Java_com_kios_ios_Render_endStatus(JNIEnv *env, jclass cls, jint pid)
 {
     LOGI("Render.endStatus called with pid: %d", pid);
     // Return a dummy status
