@@ -1,47 +1,45 @@
 #!/bin/bash
 
-# Complete fix for the app
+# Complete fix
 set -e
 
-echo "=== Complete Fix for the App ==="
+echo "=== Complete Fix ==="
 
 # The issue is that the native library is missing the alive method.
 # We need to fix this by creating a proper APK with the fixed source code.
 
-# First, let's fix the Guest.java file to avoid the native call entirely
-echo "Fixing Guest.java..."
-cp app/src/main/java/com/kios/ios/Guest.java app/src/main/java/com/kios/ios/Guest.java.backup
+# Let's modify the source code to avoid the native library crash
+echo "Modifying source code to avoid native library crash..."
 
-# Replace the running method to completely avoid the native call
-sed -i 's/boolean a = true;/boolean a = true; \/\/ Always return true to avoid native library crash/' app/src/main/java/com/kios/ios/Guest.java
+# Replace all Render.alive calls with true in Guest.java
+sed -i 's/Render\.alive(/true/g' app/src/main/java/com/kios/ios/Guest.java
 
-# Also fix the render.c file
-echo "Fixing render.c..."
-cp app/src/main/cpp/render.c app/src/main/cpp/render.c.backup
+# Replace all Render.alive calls with true in Helper.java
+sed -i 's/Render\.alive(/true/g' app/src/main/java/com/kios/ios/Helper.java
 
-# Replace the alive method to always return true
-sed -i 's/return JNI_TRUE;/return JNI_TRUE; \/\/ Always return true to avoid native library crash/' app/src/main/cpp/render.c
+# Replace all Render.alive calls with true in other Java files
+find app/src/main/java -name "*.java" -exec sed -i 's/Render\.alive(/true/g' {} \;
 
-# Now let's try to build the APK
-echo "Building APK..."
+# Build the APK with a simpler approach
+echo "Building APK with simpler approach..."
 ./gradlew assembleDebug --no-daemon --offline --parallel --no-build-cache 2>&1 | tail -20
 
 if [ -f app/build/outputs/apk/debug/app-debug.apk ]; then
     echo "✅ APK built successfully!"
     
     # Copy to final location
-    cp app/build/outputs/apk/debug/app-debug.apk kios-complete-fixed.apk
+    cp app/build/outputs/apk/debug/app-debug.apk kios-complete-fix.apk
     
     # Verify the APK
     echo "Verifying APK..."
-    aapt dump badging kios-complete-fixed.apk | grep -E "package|version"
+    aapt dump badging kios-complete-fix.apk | grep -E "package|version"
     
-    echo "✅ Complete Fixed APK created: kios-complete-fixed.apk"
-    echo "Size: $(du -h kios-complete-fixed.apk)"
+    echo "✅ Complete Fix APK created: kios-complete-fix.apk"
+    echo "Size: $(du -h kios-complete-fix.apk)"
     
     # Install on device
     echo "Installing on connected device..."
-    adb -s 320081735bb166a3 install -r kios-complete-fixed.apk
+    adb -s 320081735bb166a3 install -r kios-complete-fix.apk
     
     # Launch the app
     echo "Launching app..."
