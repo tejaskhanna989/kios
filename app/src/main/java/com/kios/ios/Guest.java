@@ -1086,9 +1086,25 @@ final class Guest {
     private static final Object KBD = new Object();
 
     static synchronized boolean running() {
-        // Always return true to avoid native library crash
-        // This allows the app to function without native libraries
-        return true;
+        // Check if we have a valid PID and the process is running
+        int currentPid = pid(null);
+        if (currentPid <= 0) {
+            return false;
+        }
+        
+        // Use Render.alive to check if the process is running
+        // This will now have a proper implementation in the native code
+        try {
+            return Render.alive(currentPid);
+        } catch (UnsatisfiedLinkError e) {
+            // Fallback to process check if native library is not available
+            try {
+                android.os.Process.sendSignal(currentPid, 0);
+                return true;
+            } catch (Exception ex) {
+                return false;
+            }
+        }
     }
 
     /** The QEMU stop() let go of: it may still hold the user disk for a few seconds. */
